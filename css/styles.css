@@ -111,18 +111,17 @@ html, body {
   scroll-snap-align: center;
   transition: transform .12s ease, box-shadow .12s ease;
 }
-/* The cover art is the spine background; the dark face (below) hides all
-   but a strip of it. Positioned so the strip shows the top of the cover. */
+/* Cover art as the spine: zoomed to the left edge so the artwork appears
+   to wrap onto the spine. Bump background-size to zoom the strip further. */
 .spine.has-art {
-  background-size: cover;
-  background-position: center top;
+  background-size: auto 135%;
+  background-position: left center;
   background-repeat: no-repeat;
 }
-/* Printed jewel-case body: dark panel covering the cover except a top strip. */
-.spine-face {
-  position: absolute; left: 0; right: 0; top: 26px; bottom: 0;
-  background: linear-gradient(105deg, rgba(12,12,14,.97), rgba(24,20,24,.94));
-  box-shadow: 0 -1px 0 rgba(255,255,255,.18), inset 0 1px 3px rgba(0,0,0,.5);
+/* Gentle scrim so the vertical title/artist stays legible over the art. */
+.spine.has-art::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.65) 0%, rgba(0,0,0,.12) 42%, rgba(0,0,0,.42) 100%);
 }
 .spine:active, .spine:focus {
   transform: translateY(-14px); outline: none;
@@ -136,7 +135,7 @@ html, body {
   transform: none !important;
   box-shadow: -8px 10px 30px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.12) inset;
 }
-.spine.open .spine-face { opacity: 0; }
+.spine.open::after { opacity: 0; }
 .spine.open .spine-label { opacity: 0; }
 .spine-label {
   position: absolute; inset: 0; z-index: 1; padding: 18px 0;
@@ -145,7 +144,6 @@ html, body {
   gap: 30px;
   writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl; text-orientation: mixed;
 }
-.spine.has-art .spine-label { padding-top: 34px; } /* clear the art strip */
 .spine-title { font-weight: 700; font-size: 1.15rem; letter-spacing: .3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 100%;
   text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.8); }
