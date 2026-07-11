@@ -32,8 +32,13 @@ export function renderRack(rackEl, albums, onOpen) {
     spine.title = `${album.name} — ${album.artist}`;
 
     if (album.image) {
+      // Cover sits as the background; a dark "face" covers all but a top
+      // strip, giving a printed jewel-case spine that hints at the artwork.
       spine.classList.add("has-art");
       spine.style.backgroundImage = `url("${album.image}")`;
+      const face = document.createElement("span");
+      face.className = "spine-face";
+      spine.appendChild(face);
     } else {
       spine.style.background = fallbackStyle(album);
     }

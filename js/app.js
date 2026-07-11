@@ -10,6 +10,9 @@ let currentRange = "recent";
 let albumCache = {}; // range → albums[]
 let openState = null; // { spineEl, panelEl, shelfEl, otherShelf }
 
+// Below this viewport height, use a single shelf (two would be too short).
+const ONE_SHELF_MAX_HEIGHT = 640;
+
 // ── Screens ─────────────────────────────────────────────────
 function showLogin(errMsg) {
   show("login", true);
@@ -41,16 +44,27 @@ async function loadRange(range, force) {
       return;
     }
     closeAlbum();
-    // Split across the two shelves: first half on top, rest on the bottom.
-    const mid = Math.ceil(albums.length / 2);
-    renderRack(el("rackTop"), albums.slice(0, mid), openAlbum);
-    renderRack(el("rackBottom"), albums.slice(mid), openAlbum);
+    renderShelves(albums);
     el("rackLoading").hidden = true;
     el("rackWrap").hidden = false;
   } catch (err) {
     handleApiError(err, "Couldn't load your shelf.");
   }
   updateDeviceLabel();
+}
+
+// Lay albums onto one or two shelves depending on the screen height.
+function renderShelves(albums) {
+  const single = window.innerHeight < ONE_SHELF_MAX_HEIGHT;
+  el("rackWrap").classList.toggle("single", single);
+  if (single) {
+    renderRack(el("rackTop"), albums, openAlbum);
+    renderRack(el("rackBottom"), [], openAlbum);
+  } else {
+    const mid = Math.ceil(albums.length / 2);
+    renderRack(el("rackTop"), albums.slice(0, mid), openAlbum);
+    renderRack(el("rackBottom"), albums.slice(mid), openAlbum);
+  }
 }
 
 // ── Expand one album in place, inside its shelf ─────────────
@@ -159,6 +173,22 @@ function wireEvents() {
   el("refreshBtn").addEventListener("click", () => loadRange(currentRange, true));
   [...document.querySelectorAll("#rangeTabs button")].forEach(b =>
     b.addEventListener("click", () => loadRange(b.dataset.range, false)));
+
+  // Re-flow the shelves on rotate/resize (crossing the height breakpoint).
+  let resizeTimer, lastSingle = window.innerHeight < ONE_SHELF_MAX_HEIGHT;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      const nowSingle = window.innerHeight < ONE_SHELF_MAX_HEIGHT;
+      if (nowSingle === lastSingle) return; // only re-render when it actually changes
+      lastSingle = nowSingle;
+      const albums = albumCache[currentRange];
+      if (albums && albums.length && !el("main").hidden) {
+        closeAlbum();
+        renderShelves(albums);
+      }
+    }, 200);
+  });
 }
 
 // ── Boot ────────────────────────────────────────────────────

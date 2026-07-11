@@ -17,7 +17,8 @@
 
 html, body {
   margin: 0; height: 100%;
-  background: var(--bg);
+  /* Moody, cinematic backdrop like the product shot. */
+  background: radial-gradient(135% 95% at 50% -12%, #2a2630 0%, #141217 45%, #09080b 100%);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-user-select: none; user-select: none;
@@ -68,12 +69,23 @@ html, body {
 }
 .btn-ghost:active { transform: scale(.94); }
 
-/* ── The rack: two stacked shelves ──────────────────── */
+/* ── The rack: framed tray holding one or two shelves ── */
 #rackWrap {
-  flex: 1 1 auto; min-height: 0; padding: .5rem 1rem 1rem;
+  flex: 1 1 auto; min-height: 0; overflow: hidden;
+  margin: .2rem 1.1rem 1.2rem; padding: 1rem 1.1rem .9rem;
   display: flex; flex-direction: column; gap: 1.1rem;
+  /* Dark metal cabinet with depth. */
+  background: linear-gradient(180deg, #221d1c 0%, #14100f 42%, #0b0908 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.07);
+  box-shadow:
+    0 26px 64px rgba(0,0,0,.65),
+    inset 0 2px 0 rgba(255,255,255,.07),
+    inset 0 0 60px rgba(0,0,0,.55);
 }
 .shelf { position: relative; flex: 1 1 0; min-height: 0; padding-bottom: 18px; }
+/* Single-shelf mode (short screens): hide the second shelf; the first fills. */
+#rackWrap.single .shelf + .shelf { display: none; }
 .rack {
   height: 100%;
   display: flex; align-items: flex-end; gap: var(--spine-gap);
@@ -99,18 +111,18 @@ html, body {
   scroll-snap-align: center;
   transition: transform .12s ease, box-shadow .12s ease;
 }
-/* Cover art used as the spine: zoom in and pin to the left edge so the
-   artwork appears to wrap around onto the spine. Bump background-size
-   above 100% to zoom the left strip in further. */
+/* The cover art is the spine background; the dark face (below) hides all
+   but a strip of it. Positioned so the strip shows the top of the cover. */
 .spine.has-art {
-  background-size: auto 130%;
-  background-position: left center;
+  background-size: cover;
+  background-position: center top;
   background-repeat: no-repeat;
 }
-/* Scrim so the vertical title stays legible over any artwork. */
-.spine.has-art::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,.72) 0%, rgba(0,0,0,.18) 45%, rgba(0,0,0,.35) 100%);
+/* Printed jewel-case body: dark panel covering the cover except a top strip. */
+.spine-face {
+  position: absolute; left: 0; right: 0; top: 26px; bottom: 0;
+  background: linear-gradient(105deg, rgba(12,12,14,.97), rgba(24,20,24,.94));
+  box-shadow: 0 -1px 0 rgba(255,255,255,.18), inset 0 1px 3px rgba(0,0,0,.5);
 }
 .spine:active, .spine:focus {
   transform: translateY(-14px); outline: none;
@@ -124,7 +136,7 @@ html, body {
   transform: none !important;
   box-shadow: -8px 10px 30px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.12) inset;
 }
-.spine.open::after { opacity: 0; }
+.spine.open .spine-face { opacity: 0; }
 .spine.open .spine-label { opacity: 0; }
 .spine-label {
   position: absolute; inset: 0; z-index: 1; padding: 18px 0;
@@ -133,6 +145,7 @@ html, body {
   gap: 30px;
   writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl; text-orientation: mixed;
 }
+.spine.has-art .spine-label { padding-top: 34px; } /* clear the art strip */
 .spine-title { font-weight: 700; font-size: 1.15rem; letter-spacing: .3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 100%;
   text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.8); }
