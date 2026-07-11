@@ -1,7 +1,7 @@
 // App entry point: wires auth, data, rendering, and playback together.
 import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js";
 import { getAlbums, getAlbumTracks, pickDevice, playAlbum,
-         searchArtists, getArtistDiscography } from "./api.js";
+         searchArtists, getArtistDiscography, isRateLimited } from "./api.js";
 import { renderRack, makePanel } from "./rack.js";
 
 const el = id => document.getElementById(id);
@@ -100,9 +100,15 @@ async function loadCurrent(force) {
     albumCache[key] = albums;
     if (albums.length) cacheSet(key, albums);
     if (!albums.length) {
-      el("rackLoading").textContent = currentView.type === "artist"
-        ? "No releases found for this artist."
-        : "No albums found here yet — play some music on Spotify and refresh.";
+      const stale = cacheGet(key, true);
+      if (stale && stale.length) { albumCache[key] = stale; showAlbums(stale); }
+      else if (isRateLimited()) {
+        el("rackLoading").textContent = "Spotify is rate-limiting the app. Wait a minute, then tap ↻ to refresh.";
+      } else {
+        el("rackLoading").textContent = currentView.type === "artist"
+          ? "No releases found for this artist."
+          : "No albums found here yet — play some music on Spotify and refresh.";
+      }
       return;
     }
     showAlbums(albums);

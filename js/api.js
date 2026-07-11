@@ -21,9 +21,18 @@ function release() {
   if (next) { inflight++; next(); }
 }
 
+// Circuit breaker: after a rate-limit, refuse all requests until this time,
+// so a single 429 doesn't turn into a storm of failing calls.
+let blockedUntil = 0;
+export function isRateLimited() { return Date.now() < blockedUntil; }
+function rateLimitError() { const e = new Error("Rate limited — cooling down"); e.status = 429; return e; }
+
 async function api(path, opts = {}, retries = 2) {
+  if (Date.now() < blockedUntil) throw rateLimitError();
   const token = await getAccessToken();
   await acquire();
+  // Re-check after waiting for a slot — the breaker may have tripped meanwhile.
+  if (Date.now() < blockedUntil) { release(); throw rateLimitError(); }
   let res;
   try {
     res = await fetch(BASE + path, {
@@ -37,15 +46,16 @@ async function api(path, opts = {}, retries = 2) {
   } finally {
     release(); // free the slot before any retry wait
   }
-  // Rate limit: only retry short, transient limits. On a long penalty give
-  // up immediately so we fall back to cache instead of storming the API.
   if (res.status === 429) {
     const ra = parseInt(res.headers.get("Retry-After") || "1", 10);
     const secs = Number.isNaN(ra) ? 1 : ra;
+    // Only retry very short, transient limits.
     if (retries > 0 && secs <= 3) {
       await sleep(secs * 1000 + 300);
       return api(path, opts, retries - 1);
     }
+    // Otherwise trip the breaker so sibling/later calls stop hammering.
+    blockedUntil = Date.now() + Math.min(Math.max(secs, 5), 60) * 1000;
   }
   if (res.status === 204) return null; // No Content (common for player calls)
   if (!res.ok) {
