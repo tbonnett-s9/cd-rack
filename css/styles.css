@@ -1,0 +1,192 @@
+:root {
+  --bg: #14110f;
+  --bg-2: #1d1916;
+  --shelf: #2a2320;
+  --ink: #f2ede6;
+  --muted: #a99f95;
+  --accent: #1db954;      /* Spotify green */
+  --spine-w: 48px;
+  --spine-gap: 6px;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* The [hidden] attribute must win over author display rules below. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0; height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-user-select: none; user-select: none;
+  overscroll-behavior: none;
+}
+
+#app, .screen { height: 100%; }
+.screen { display: flex; flex-direction: column; }
+
+/* ── Login ──────────────────────────────────────────── */
+#login {
+  align-items: center; justify-content: center;
+  background: radial-gradient(120% 120% at 50% 0%, var(--bg-2), var(--bg));
+}
+.login-card { text-align: center; padding: 2rem; }
+.login-card h1 { font-size: 3rem; margin: 0 0 .25rem; letter-spacing: .5px; }
+.login-card p { color: var(--muted); margin: 0 0 2rem; font-size: 1.1rem; }
+
+.btn-primary {
+  background: var(--accent); color: #05210f; border: 0;
+  font-size: 1.1rem; font-weight: 700; padding: .9rem 2rem;
+  border-radius: 999px; cursor: pointer; touch-action: manipulation;
+}
+.btn-primary:active { transform: scale(.97); }
+.error { color: #ff8a80; margin-top: 1rem; }
+
+/* ── Top bar ────────────────────────────────────────── */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .6rem 1rem; gap: 1rem;
+  background: linear-gradient(var(--bg-2), transparent);
+  flex: 0 0 auto;
+}
+.segmented { display: flex; background: rgba(255,255,255,.06); border-radius: 999px; padding: 3px; }
+.segmented button {
+  border: 0; background: transparent; color: var(--muted);
+  padding: .5rem 1rem; border-radius: 999px; font-size: .95rem;
+  cursor: pointer; touch-action: manipulation; white-space: nowrap;
+}
+.segmented button.active { background: rgba(255,255,255,.14); color: var(--ink); font-weight: 600; }
+
+.topbar-right { display: flex; align-items: center; gap: .5rem; }
+.device-label { color: var(--muted); font-size: .85rem; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-ghost {
+  border: 0; background: rgba(255,255,255,.08); color: var(--ink);
+  width: 40px; height: 40px; border-radius: 50%; font-size: 1.1rem;
+  cursor: pointer; touch-action: manipulation;
+}
+.btn-ghost:active { transform: scale(.94); }
+
+/* ── The rack: two stacked shelves ──────────────────── */
+#rackWrap {
+  flex: 1 1 auto; min-height: 0; padding: .5rem 1rem 1rem;
+  display: flex; flex-direction: column; gap: 1.1rem;
+}
+.shelf { position: relative; flex: 1 1 0; min-height: 0; padding-bottom: 18px; }
+.rack {
+  height: 100%;
+  display: flex; align-items: flex-end; gap: var(--spine-gap);
+  overflow-x: auto; overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-top: 14px;
+  scroll-snap-type: x proximity;
+}
+/* the wooden shelf floor under each row */
+.shelf::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 16px;
+  background: linear-gradient(var(--shelf), #17120f);
+  border-radius: 4px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+.spine {
+  position: relative; flex: 0 0 var(--spine-w); width: var(--spine-w);
+  height: 100%; border: 0; padding: 0; cursor: pointer; touch-action: manipulation;
+  border-radius: 3px 3px 2px 2px;
+  box-shadow: -3px 0 6px rgba(0,0,0,.45), inset 1px 0 0 rgba(255,255,255,.14), inset -2px 0 4px rgba(0,0,0,.35);
+  color: var(--ink); overflow: hidden;
+  scroll-snap-align: center;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+/* Cover art used as the spine: zoom in and pin to the left edge so the
+   artwork appears to wrap around onto the spine. Bump background-size
+   above 100% to zoom the left strip in further. */
+.spine.has-art {
+  background-size: auto 130%;
+  background-position: left center;
+  background-repeat: no-repeat;
+}
+/* Scrim so the vertical title stays legible over any artwork. */
+.spine.has-art::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.72) 0%, rgba(0,0,0,.18) 45%, rgba(0,0,0,.35) 100%);
+}
+.spine:active, .spine:focus {
+  transform: translateY(-14px); outline: none;
+  box-shadow: -6px 6px 16px rgba(0,0,0,.6), inset 1px 0 0 rgba(255,255,255,.2);
+}
+/* Opened spine → square cover, facing forward, sitting in the shelf. */
+.spine.open {
+  flex: 0 0 auto; width: auto; height: 100%; aspect-ratio: 1 / 1;
+  background-size: cover; background-position: center;
+  border-radius: 6px; z-index: 4; overflow: visible;
+  transform: none !important;
+  box-shadow: -8px 10px 30px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.12) inset;
+}
+.spine.open::after { opacity: 0; }
+.spine.open .spine-label { opacity: 0; }
+.spine-label {
+  position: absolute; inset: 0; z-index: 1; padding: 18px 0;
+  /* Single vertical line: artist, a gap, then the album title. */
+  display: flex; flex-direction: row; align-items: center; justify-content: flex-start;
+  gap: 30px;
+  writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl; text-orientation: mixed;
+}
+.spine-title { font-weight: 700; font-size: 1.15rem; letter-spacing: .3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 100%;
+  text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.8); }
+.spine-artist { font-weight: 600; font-size: 1rem; color: rgba(255,255,255,.9); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-height: 100%;
+  text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.8); }
+
+/* ── Loading state ──────────────────────────────────── */
+.rack-loading { position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; color: var(--muted); font-size: 1.1rem; text-align: center; padding: 2rem; }
+
+/* ── Inline track panel (slides out next to the open cover) ── */
+.track-panel {
+  flex: 0 0 auto; height: 100%; width: 0; overflow: hidden;
+  z-index: 3; align-self: stretch;
+  transition: width .4s cubic-bezier(.4, 0, .2, 1);
+}
+.track-panel.open { width: min(440px, 66vw); }
+.track-panel-inner {
+  width: min(440px, 66vw); height: 100%; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  padding: 10px 12px 10px 18px;
+  background: linear-gradient(160deg, #241f1b, #17130f);
+  border-radius: 0 8px 8px 0;
+  box-shadow: inset 8px 0 16px rgba(0,0,0,.35);
+}
+.tp-head { display: flex; align-items: flex-start; gap: 10px; }
+.tp-heading { flex: 1 1 auto; min-width: 0; }
+.tp-title { margin: 0; font-size: 1.15rem; line-height: 1.15;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-artist { margin: 2px 0 0; color: var(--ink); font-size: .9rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-meta { margin: 2px 0 0; color: var(--muted); font-size: .78rem; }
+.tp-close { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; border: 0;
+  background: rgba(255,255,255,.1); color: var(--ink); font-size: 1rem; cursor: pointer; }
+.tp-close:active { transform: scale(.94); }
+.tp-play {
+  margin: 10px 0 4px; align-self: flex-start;
+  background: var(--accent); color: #05210f; border: 0; font-weight: 700;
+  padding: .55rem 1.2rem; border-radius: 999px; cursor: pointer; touch-action: manipulation;
+}
+.tp-play:active { transform: scale(.97); }
+.tp-hint { margin: 4px 0; color: var(--muted); font-size: .8rem; min-height: 1em; }
+.tp-hint.error { color: #ff8a80; }
+
+.track-list { list-style: none; margin: 0; padding: 0;
+  flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.track {
+  display: flex; align-items: center; gap: .7rem; padding: .6rem .4rem;
+  border-radius: 8px; cursor: pointer; touch-action: manipulation;
+}
+.track:active { background: rgba(255,255,255,.08); }
+.track + .track { border-top: 1px solid rgba(255,255,255,.06); }
+.track-num { flex: 0 0 1.5rem; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.track-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-time { flex: 0 0 auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.track.loading { color: var(--muted); justify-content: center; }

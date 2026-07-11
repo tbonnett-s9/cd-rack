@@ -1,0 +1,46 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#141414" />
+<title>CD Rack</title>
+<link rel="stylesheet" href="css/styles.css" />
+
+<div id="app">
+  <!-- Login screen -->
+  <section id="login" class="screen" hidden>
+    <div class="login-card">
+      <h1>CD&nbsp;Rack</h1>
+      <p>Your Spotify library, on the shelf.</p>
+      <button id="loginBtn" class="btn-primary">Connect Spotify</button>
+      <p id="loginError" class="error" hidden></p>
+    </div>
+  </section>
+
+  <!-- Main rack -->
+  <section id="main" class="screen" hidden>
+    <header id="topbar">
+      <div class="segmented" id="rangeTabs">
+        <button data-range="recent" class="active">Recent</button>
+        <button data-range="short_term">Weeks</button>
+        <button data-range="medium_term">Months</button>
+        <button data-range="long_term">Years</button>
+      </div>
+      <div class="topbar-right">
+        <span id="deviceLabel" class="device-label"></span>
+        <button id="refreshBtn" class="btn-ghost" title="Refresh">↻</button>
+        <button id="logoutBtn" class="btn-ghost" title="Disconnect">⏻</button>
+      </div>
+    </header>
+
+    <div id="rackWrap">
+      <div class="shelf"><div id="rackTop" class="rack"></div></div>
+      <div class="shelf"><div id="rackBottom" class="rack"></div></div>
+    </div>
+
+    <div id="rackLoading" class="rack-loading">Loading your shelf…</div>
+  </section>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
