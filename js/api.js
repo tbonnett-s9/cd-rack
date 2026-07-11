@@ -4,7 +4,9 @@ import { MAX_ALBUMS } from "./config.js";
 
 const BASE = "https://api.spotify.com/v1";
 
-async function api(path, opts = {}) {
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function api(path, opts = {}, retries = 3) {
   const token = await getAccessToken();
   const res = await fetch(BASE + path, {
     ...opts,
@@ -14,6 +16,13 @@ async function api(path, opts = {}) {
       ...(opts.headers || {})
     }
   });
+  // Spotify rate limit — wait the requested time (capped) and retry.
+  if (res.status === 429 && retries > 0) {
+    const ra = parseInt(res.headers.get("Retry-After") || "1", 10);
+    const waitMs = (Number.isNaN(ra) ? 1 : Math.min(ra, 10)) * 1000 + 300;
+    await sleep(waitMs);
+    return api(path, opts, retries - 1);
+  }
   if (res.status === 204) return null; // No Content (common for player calls)
   if (!res.ok) {
     let detail = "";
@@ -45,6 +54,20 @@ function toAlbum(album) {
 // hasn't granted) without letting it break the whole rack.
 async function safe(fn) {
   try { return await fn(); } catch (e) { console.warn("source skipped:", e.message); return []; }
+}
+
+// Run fn over items with at most `limit` in flight, to avoid rate limits.
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      results[idx] = await fn(items[idx], idx);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 // Build a ranked, de-duplicated list of albums for a given range.
@@ -154,9 +177,10 @@ async function fetchTopArtistAlbums() {
   const data = await api("/me/top/artists?limit=50&time_range=medium_term");
   const artists = (data?.items || []).slice(0, 20);
   const mkt = market ? `&market=${market}` : "";
-  const lists = await Promise.all(artists.map(ar =>
+  // Throttle to a few in flight so we don't trip Spotify's rate limit.
+  const lists = await mapLimit(artists, 4, ar =>
     safe(() => api(`/artists/${ar.id}/albums?include_groups=album&limit=20${mkt}`))
-  ));
+  );
   const out = [];
   lists.forEach(d => (d?.items || []).forEach(a => out.push(a)));
   return out;
@@ -194,27 +218,21 @@ export async function searchArtists(query) {
   }));
 }
 
-// An artist's full discography as albums, newest first, de-duplicated
-// across markets and across "(Deluxe)/(Remaster)" style variants.
+// An artist's full discography, newest first. Every edition is kept
+// (deluxe, remaster, single, etc.); only exact-duplicate IDs from
+// pagination are collapsed.
 export async function getArtistDiscography(artistId) {
   const market = await getMarket();
   const mkt = market ? `&market=${market}` : "";
-  const seen = new Map(); // cleaned name → album
+  const byId = new Map();
   let path = `/artists/${artistId}/albums?include_groups=album,single,compilation&limit=50${mkt}`;
-  for (let p = 0; p < 4; p++) {
+  for (let p = 0; p < 5; p++) {
     const data = await api(path);
-    (data?.items || []).forEach(a => {
-      const key = (a.name || "").toLowerCase().replace(/\s*[\(\[].*?[\)\]]\s*/g, "").trim();
-      const existing = seen.get(key);
-      // Prefer full albums over singles when names collide.
-      if (!existing || (existing.album_type !== "album" && a.album_type === "album")) {
-        seen.set(key, a);
-      }
-    });
+    (data?.items || []).forEach(a => { if (!byId.has(a.id)) byId.set(a.id, a); });
     if (!data?.next) break;
     path = data.next.replace("https://api.spotify.com/v1", "");
   }
-  return [...seen.values()]
+  return [...byId.values()]
     .sort((x, y) => (y.release_date || "").localeCompare(x.release_date || ""))
     .map(toAlbum);
 }
