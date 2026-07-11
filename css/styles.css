@@ -48,10 +48,11 @@ html, body {
 /* ── Top bar ────────────────────────────────────────── */
 #topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: .6rem 1rem; gap: 1rem;
+  padding: .6rem 1rem; gap: 1rem; flex-wrap: wrap;
   background: linear-gradient(var(--bg-2), transparent);
-  flex: 0 0 auto;
+  flex: 0 0 auto; z-index: 20;
 }
+.topbar-left { display: flex; align-items: center; gap: .6rem; min-width: 0; }
 .segmented { display: flex; background: rgba(255,255,255,.06); border-radius: 999px; padding: 3px; }
 .segmented button {
   border: 0; background: transparent; color: var(--muted);
@@ -68,6 +69,50 @@ html, body {
   cursor: pointer; touch-action: manipulation;
 }
 .btn-ghost:active { transform: scale(.94); }
+
+/* ── Artist chip (when viewing a discography) ──────────── */
+.artist-chip {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: rgba(29,185,84,.16); border: 1px solid rgba(29,185,84,.45);
+  color: var(--ink); padding: .35rem .5rem .35rem .8rem; border-radius: 999px;
+  font-size: .9rem; max-width: 40vw;
+}
+.artist-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artist-chip .chip-close {
+  border: 0; background: rgba(255,255,255,.12); color: var(--ink);
+  width: 24px; height: 24px; border-radius: 50%; font-size: .75rem; cursor: pointer;
+  flex: 0 0 auto; line-height: 1;
+}
+.artist-chip .chip-close:active { transform: scale(.9); }
+
+/* ── Search ─────────────────────────────────────────────── */
+.search { position: relative; flex: 1 1 220px; max-width: 340px; min-width: 160px; }
+.search-input {
+  width: 100%; box-sizing: border-box;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+  color: var(--ink); border-radius: 999px; padding: .55rem 1rem; font-size: .95rem;
+  outline: none; -webkit-appearance: none;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { border-color: rgba(29,185,84,.6); background: rgba(255,255,255,.12); }
+.search-results {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 70;
+  background: #1b1714; border: 1px solid rgba(255,255,255,.12); border-radius: 14px;
+  box-shadow: 0 22px 54px rgba(0,0,0,.6); overflow: hidden auto; max-height: 66vh;
+}
+.search-result {
+  display: flex; align-items: center; gap: .7rem; padding: .55rem .8rem;
+  cursor: pointer; touch-action: manipulation;
+}
+.search-result:active { background: rgba(255,255,255,.09); }
+.search-result + .search-result { border-top: 1px solid rgba(255,255,255,.05); }
+.search-result img {
+  width: 42px; height: 42px; border-radius: 50%; object-fit: cover;
+  background: #000; flex: 0 0 auto;
+}
+.search-result .sr-text { display: flex; flex-direction: column; min-width: 0; }
+.search-result .sr-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.search-result .sr-sub { color: var(--muted); font-size: .75rem; }
 
 /* ── The rack: framed tray holding one or two shelves ── */
 #rackWrap {

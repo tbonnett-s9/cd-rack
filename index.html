@@ -20,11 +20,22 @@
   <!-- Main rack -->
   <section id="main" class="screen" hidden>
     <header id="topbar">
-      <div class="segmented" id="rangeTabs">
-        <button data-range="recent" class="active">Recent</button>
-        <button data-range="short_term">Weeks</button>
-        <button data-range="medium_term">Months</button>
-        <button data-range="long_term">Years</button>
+      <div class="topbar-left">
+        <div class="segmented" id="rangeTabs">
+          <button data-range="recent" class="active">Recent</button>
+          <button data-range="short_term">Weeks</button>
+          <button data-range="medium_term">Months</button>
+          <button data-range="long_term">Years</button>
+        </div>
+        <span id="artistChip" class="artist-chip" hidden>
+          <span class="chip-name"></span>
+          <button class="chip-close" aria-label="Back to library">✕</button>
+        </span>
+      </div>
+      <div class="search">
+        <input id="searchInput" class="search-input" type="search"
+               placeholder="Search artists…" autocomplete="off" autocorrect="off" />
+        <div id="searchResults" class="search-results" hidden></div>
       </div>
       <div class="topbar-right">
         <span id="deviceLabel" class="device-label"></span>

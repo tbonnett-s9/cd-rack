@@ -1,14 +1,17 @@
 // App entry point: wires auth, data, rendering, and playback together.
 import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js";
-import { getAlbums, getAlbumTracks, pickDevice, playAlbum } from "./api.js";
+import { getAlbums, getAlbumTracks, pickDevice, playAlbum,
+         searchArtists, getArtistDiscography } from "./api.js";
 import { renderRack, makePanel } from "./rack.js";
 
 const el = id => document.getElementById(id);
 const show = (id, on) => { el(id).hidden = !on; };
 
-let currentRange = "recent";
-let albumCache = {}; // range → albums[]
-let openState = null; // { spineEl, panelEl, shelfEl, otherShelf }
+// The rack shows one "view" at a time: a library range, or an artist's discography.
+let currentView = { type: "range", range: "recent" };
+let currentAlbums = [];       // albums currently on the shelves
+let albumCache = {};          // view key → albums[]
+let openState = null;         // { spineEl, panelEl }
 
 // Below this viewport height, use a single shelf (two would be too short).
 const ONE_SHELF_MAX_HEIGHT = 640;
@@ -27,20 +30,45 @@ function showMain() {
   show("main", true);
 }
 
-// ── Load & render the shelf for a range ─────────────────────
-async function loadRange(range, force) {
-  currentRange = range;
+// ── Switch to a library range (Recent / Weeks / …) ──────────
+function selectRange(range) {
+  currentView = { type: "range", range };
+  el("artistChip").hidden = true;
   [...document.querySelectorAll("#rangeTabs button")].forEach(b =>
     b.classList.toggle("active", b.dataset.range === range));
+  loadCurrent(false);
+}
 
+// ── Switch to an artist's discography ───────────────────────
+function selectArtist(id, name) {
+  currentView = { type: "artist", id, name };
+  [...document.querySelectorAll("#rangeTabs button")].forEach(b => b.classList.remove("active"));
+  const chip = el("artistChip");
+  chip.hidden = false;
+  chip.querySelector(".chip-name").textContent = name;
+  loadCurrent(false);
+}
+
+// ── Load & render whatever the current view is ──────────────
+async function loadCurrent(force) {
+  const key = currentView.type === "range"
+    ? `range:${currentView.range}`
+    : `artist:${currentView.id}`;
+
+  el("rackLoading").textContent = "Loading your shelf…";
   el("rackLoading").hidden = false;
   el("rackWrap").hidden = true;
   try {
-    if (force || !albumCache[range]) albumCache[range] = await getAlbums(range);
-    const albums = albumCache[range];
+    if (force || !albumCache[key]) {
+      albumCache[key] = currentView.type === "range"
+        ? await getAlbums(currentView.range)
+        : await getArtistDiscography(currentView.id);
+    }
+    const albums = albumCache[key];
     if (!albums.length) {
-      el("rackLoading").textContent =
-        "No albums found here yet — play some music on Spotify and refresh.";
+      el("rackLoading").textContent = currentView.type === "artist"
+        ? "No releases found for this artist."
+        : "No albums found here yet — play some music on Spotify and refresh.";
       return;
     }
     closeAlbum();
@@ -55,6 +83,7 @@ async function loadRange(range, force) {
 
 // Lay albums onto one or two shelves depending on the screen height.
 function renderShelves(albums) {
+  currentAlbums = albums;
   const single = window.innerHeight < ONE_SHELF_MAX_HEIGHT;
   el("rackWrap").classList.toggle("single", single);
   if (single) {
@@ -170,9 +199,15 @@ function wireEvents() {
     catch (e) { el("loginError").textContent = e.message; el("loginError").hidden = false; }
   });
   el("logoutBtn").addEventListener("click", () => { logout(); showLogin(); });
-  el("refreshBtn").addEventListener("click", () => loadRange(currentRange, true));
+  el("refreshBtn").addEventListener("click", () => loadCurrent(true));
   [...document.querySelectorAll("#rangeTabs button")].forEach(b =>
-    b.addEventListener("click", () => loadRange(b.dataset.range, false)));
+    b.addEventListener("click", () => selectRange(b.dataset.range)));
+
+  // Artist chip ✕ → back to the last library range.
+  el("artistChip").querySelector(".chip-close").addEventListener("click", () =>
+    selectRange(currentView.type === "range" ? currentView.range : "recent"));
+
+  wireSearch();
 
   // Re-flow the shelves on rotate/resize (crossing the height breakpoint).
   let resizeTimer, lastSingle = window.innerHeight < ONE_SHELF_MAX_HEIGHT;
@@ -182,12 +217,61 @@ function wireEvents() {
       const nowSingle = window.innerHeight < ONE_SHELF_MAX_HEIGHT;
       if (nowSingle === lastSingle) return; // only re-render when it actually changes
       lastSingle = nowSingle;
-      const albums = albumCache[currentRange];
-      if (albums && albums.length && !el("main").hidden) {
+      if (currentAlbums.length && !el("main").hidden) {
         closeAlbum();
-        renderShelves(albums);
+        renderShelves(currentAlbums);
       }
     }, 200);
+  });
+}
+
+// ── Artist search ───────────────────────────────────────────
+function wireSearch() {
+  const input = el("searchInput");
+  const results = el("searchResults");
+  let timer, seq = 0;
+
+  const hide = () => { results.hidden = true; results.innerHTML = ""; };
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    clearTimeout(timer);
+    if (q.length < 2) { hide(); return; }
+    timer = setTimeout(async () => {
+      const mine = ++seq;
+      try {
+        const artists = await searchArtists(q);
+        if (mine !== seq) return; // a newer query superseded this one
+        renderSearchResults(artists);
+      } catch (err) { handleApiError(err, "Search failed."); }
+    }, 250);
+  });
+
+  function renderSearchResults(artists) {
+    results.innerHTML = "";
+    if (!artists.length) { results.hidden = true; return; }
+    artists.forEach(a => {
+      const row = document.createElement("div");
+      row.className = "search-result";
+      const sub = a.followers ? `${a.followers.toLocaleString()} followers` : "Artist";
+      row.innerHTML =
+        `<img src="${a.image || ""}" alt="" />` +
+        `<span class="sr-text"><span class="sr-name"></span><span class="sr-sub">${sub}</span></span>`;
+      row.querySelector(".sr-name").textContent = a.name;
+      row.addEventListener("click", () => {
+        hide();
+        input.value = "";
+        input.blur();
+        selectArtist(a.id, a.name);
+      });
+      results.appendChild(row);
+    });
+    results.hidden = false;
+  }
+
+  // Dismiss the dropdown when tapping elsewhere.
+  document.addEventListener("click", e => {
+    if (!el("searchInput").parentNode.contains(e.target)) hide();
   });
 }
 
@@ -198,7 +282,7 @@ async function boot() {
     const returned = await handleRedirectCallback();
     if (returned || isLoggedIn()) {
       showMain();
-      await loadRange("recent", false);
+      selectRange("recent");
     } else {
       showLogin();
     }

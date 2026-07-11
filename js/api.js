@@ -182,6 +182,43 @@ export async function getAlbumTracks(albumId) {
   }));
 }
 
+// ── Search & artist discography ─────────────────────────────
+export async function searchArtists(query) {
+  const data = await api(`/search?type=artist&limit=8&q=${encodeURIComponent(query)}`);
+  return (data?.artists?.items || []).map(a => ({
+    id: a.id,
+    name: a.name,
+    // Smallest image is plenty for a result thumbnail.
+    image: (a.images && (a.images[a.images.length - 1] || a.images[0]) || {}).url || "",
+    followers: (a.followers && a.followers.total) || 0
+  }));
+}
+
+// An artist's full discography as albums, newest first, de-duplicated
+// across markets and across "(Deluxe)/(Remaster)" style variants.
+export async function getArtistDiscography(artistId) {
+  const market = await getMarket();
+  const mkt = market ? `&market=${market}` : "";
+  const seen = new Map(); // cleaned name → album
+  let path = `/artists/${artistId}/albums?include_groups=album,single,compilation&limit=50${mkt}`;
+  for (let p = 0; p < 4; p++) {
+    const data = await api(path);
+    (data?.items || []).forEach(a => {
+      const key = (a.name || "").toLowerCase().replace(/\s*[\(\[].*?[\)\]]\s*/g, "").trim();
+      const existing = seen.get(key);
+      // Prefer full albums over singles when names collide.
+      if (!existing || (existing.album_type !== "album" && a.album_type === "album")) {
+        seen.set(key, a);
+      }
+    });
+    if (!data?.next) break;
+    path = data.next.replace("https://api.spotify.com/v1", "");
+  }
+  return [...seen.values()]
+    .sort((x, y) => (y.release_date || "").localeCompare(x.release_date || ""))
+    .map(toAlbum);
+}
+
 // ── Playback ────────────────────────────────────────────────
 export async function getDevices() {
   const data = await api("/me/player/devices");
