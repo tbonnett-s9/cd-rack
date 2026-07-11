@@ -21,7 +21,7 @@ function release() {
   if (next) { inflight++; next(); }
 }
 
-async function api(path, opts = {}, retries = 3) {
+async function api(path, opts = {}, retries = 2) {
   const token = await getAccessToken();
   await acquire();
   let res;
@@ -37,12 +37,15 @@ async function api(path, opts = {}, retries = 3) {
   } finally {
     release(); // free the slot before any retry wait
   }
-  // Spotify rate limit — wait the requested time (capped) and retry.
-  if (res.status === 429 && retries > 0) {
+  // Rate limit: only retry short, transient limits. On a long penalty give
+  // up immediately so we fall back to cache instead of storming the API.
+  if (res.status === 429) {
     const ra = parseInt(res.headers.get("Retry-After") || "1", 10);
-    const waitMs = (Number.isNaN(ra) ? 1 : Math.min(ra, 10)) * 1000 + 300;
-    await sleep(waitMs);
-    return api(path, opts, retries - 1);
+    const secs = Number.isNaN(ra) ? 1 : ra;
+    if (retries > 0 && secs <= 3) {
+      await sleep(secs * 1000 + 300);
+      return api(path, opts, retries - 1);
+    }
   }
   if (res.status === 204) return null; // No Content (common for player calls)
   if (!res.ok) {
@@ -77,20 +80,6 @@ async function safe(fn) {
   try { return await fn(); } catch (e) { console.warn("source skipped:", e.message); return []; }
 }
 
-// Run fn over items with at most `limit` in flight, to avoid rate limits.
-async function mapLimit(items, limit, fn) {
-  const results = new Array(items.length);
-  let i = 0;
-  async function worker() {
-    while (i < items.length) {
-      const idx = i++;
-      results[idx] = await fn(items[idx], idx);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
-}
-
 // Build a ranked, de-duplicated list of albums for a given range.
 // The selected tab is the PRIMARY source (weighted highest); we then fold
 // in every other library source we can reach to fill the shelves.
@@ -111,15 +100,13 @@ export async function getAlbums(range) {
   primary.forEach((t, i) => bump(t.album, (pn - i) * 4));
 
   // 2) Broadening sources. Kept lean to stay well under the rate limit.
-  const [saved, liked, artistAlbums] = await Promise.all([
+  const [saved, liked] = await Promise.all([
     safe(fetchSavedAlbums),          // "Your Library" albums (needs user-library-read)
-    safe(fetchLikedTrackAlbums),     // albums behind liked songs (needs user-library-read)
-    safe(fetchTopArtistAlbums)       // full albums by your top artists
+    safe(fetchLikedTrackAlbums)      // albums behind liked songs (needs user-library-read)
   ]);
 
   saved.forEach((a, i) => bump(a, 350 - Math.min(i, 300)));   // explicitly saved → prominent
   liked.forEach(a => bump(a, 40));                            // one hit per liked track in the album
-  artistAlbums.forEach(a => bump(a, 18));                     // deep catalogue fill
 
   return [...albums.values()]
     .sort((a, b) => b.score - a.score)
@@ -176,21 +163,6 @@ function fetchSavedAlbums() {
 // Albums behind the user's liked songs.
 function fetchLikedTrackAlbums() {
   return paginate("/me/tracks?limit=50", 2, it => it.track && it.track.album);
-}
-
-// Full studio albums by the user's top artists (market-filtered to cut
-// cross-market duplicates). Kept small + throttled to respect rate limits.
-async function fetchTopArtistAlbums() {
-  const market = await getMarket();
-  const data = await api("/me/top/artists?limit=50&time_range=medium_term");
-  const artists = (data?.items || []).slice(0, 8);
-  const mkt = market ? `&market=${market}` : "";
-  const lists = await mapLimit(artists, 3, ar =>
-    safe(() => api(`/artists/${ar.id}/albums?include_groups=album&limit=20${mkt}`))
-  );
-  const out = [];
-  lists.forEach(d => (d?.items || []).forEach(a => out.push(a)));
-  return out;
 }
 
 let _market = null;

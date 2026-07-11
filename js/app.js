@@ -49,34 +49,68 @@ function selectArtist(id, name) {
   loadCurrent(false);
 }
 
+// ── Album-list cache (survives reloads to avoid re-hitting the API) ──
+const CACHE_PREFIX = "cdrack_albums_";
+const cacheTtl = key => key.startsWith("artist:") ? 24 * 60 * 60 * 1000 : 30 * 60 * 1000;
+function cacheGet(key, ignoreTtl) {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!ignoreTtl && Date.now() - obj.t > cacheTtl(key)) return null;
+    return obj.albums;
+  } catch { return null; }
+}
+function cacheSet(key, albums) {
+  try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), albums })); }
+  catch { /* storage full — ignore */ }
+}
+
+function showAlbums(albums) {
+  closeAlbum();
+  renderShelves(albums);
+  el("rackLoading").hidden = true;
+  el("rackWrap").hidden = false;
+}
+
 // ── Load & render whatever the current view is ──────────────
 async function loadCurrent(force) {
   const key = currentView.type === "range"
     ? `range:${currentView.range}`
     : `artist:${currentView.id}`;
 
+  // Serve from cache (memory or localStorage) unless the user forced a refresh.
+  if (!force) {
+    const cached = albumCache[key] || cacheGet(key);
+    if (cached && cached.length) {
+      albumCache[key] = cached;
+      showAlbums(cached);
+      updateDeviceLabel();
+      return;
+    }
+  }
+
   el("rackLoading").textContent = "Loading your shelf…";
   el("rackLoading").hidden = false;
   el("rackWrap").hidden = true;
   try {
-    if (force || !albumCache[key]) {
-      albumCache[key] = currentView.type === "range"
-        ? await getAlbums(currentView.range)
-        : await getArtistDiscography(currentView.id);
-    }
-    const albums = albumCache[key];
+    const albums = currentView.type === "range"
+      ? await getAlbums(currentView.range)
+      : await getArtistDiscography(currentView.id);
+    albumCache[key] = albums;
+    if (albums.length) cacheSet(key, albums);
     if (!albums.length) {
       el("rackLoading").textContent = currentView.type === "artist"
         ? "No releases found for this artist."
         : "No albums found here yet — play some music on Spotify and refresh.";
       return;
     }
-    closeAlbum();
-    renderShelves(albums);
-    el("rackLoading").hidden = true;
-    el("rackWrap").hidden = false;
+    showAlbums(albums);
   } catch (err) {
-    handleApiError(err, "Couldn't load your shelf.");
+    // Prefer showing stale cached albums over an error screen.
+    const stale = cacheGet(key, true);
+    if (stale && stale.length) { albumCache[key] = stale; showAlbums(stale); }
+    else handleApiError(err, "Couldn't load your shelf.");
   }
   updateDeviceLabel();
 }
@@ -189,6 +223,10 @@ function handleApiError(err, fallback) {
   console.error(err);
   if (err.status === 401) { logout(); showLogin("Session expired — please reconnect."); return; }
   el("rackLoading").hidden = false;
+  if (err.status === 429) {
+    el("rackLoading").textContent = "Spotify is rate-limiting the app. Wait a minute, then tap ↻ to refresh.";
+    return;
+  }
   el("rackLoading").textContent = fallback + " " + (err.message || "");
 }
 
