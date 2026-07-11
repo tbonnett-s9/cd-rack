@@ -6,16 +6,37 @@ const BASE = "https://api.spotify.com/v1";
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Global request gate: never let more than MAX_INFLIGHT requests run at
+// once, so we never burst hard enough to trip Spotify's rate limit.
+const MAX_INFLIGHT = 3;
+let inflight = 0;
+const waiters = [];
+function acquire() {
+  if (inflight < MAX_INFLIGHT) { inflight++; return Promise.resolve(); }
+  return new Promise(res => waiters.push(res));
+}
+function release() {
+  inflight--;
+  const next = waiters.shift();
+  if (next) { inflight++; next(); }
+}
+
 async function api(path, opts = {}, retries = 3) {
   const token = await getAccessToken();
-  const res = await fetch(BASE + path, {
-    ...opts,
-    headers: {
-      Authorization: "Bearer " + token,
-      "Content-Type": "application/json",
-      ...(opts.headers || {})
-    }
-  });
+  await acquire();
+  let res;
+  try {
+    res = await fetch(BASE + path, {
+      ...opts,
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+        ...(opts.headers || {})
+      }
+    });
+  } finally {
+    release(); // free the slot before any retry wait
+  }
   // Spotify rate limit — wait the requested time (capped) and retry.
   if (res.status === 429 && retries > 0) {
     const ra = parseInt(res.headers.get("Retry-After") || "1", 10);
@@ -89,17 +110,15 @@ export async function getAlbums(range) {
   const pn = primary.length;
   primary.forEach((t, i) => bump(t.album, (pn - i) * 4));
 
-  // 2) Broadening sources, fetched in parallel. Each is optional.
-  const [saved, liked, artistAlbums, otherTops] = await Promise.all([
+  // 2) Broadening sources. Kept lean to stay well under the rate limit.
+  const [saved, liked, artistAlbums] = await Promise.all([
     safe(fetchSavedAlbums),          // "Your Library" albums (needs user-library-read)
     safe(fetchLikedTrackAlbums),     // albums behind liked songs (needs user-library-read)
-    safe(fetchTopArtistAlbums),      // full albums by your top artists
-    safe(() => fetchOtherTopTracks(range)) // top tracks from the OTHER time ranges
+    safe(fetchTopArtistAlbums)       // full albums by your top artists
   ]);
 
   saved.forEach((a, i) => bump(a, 350 - Math.min(i, 300)));   // explicitly saved → prominent
   liked.forEach(a => bump(a, 40));                            // one hit per liked track in the album
-  otherTops.forEach((t, i) => bump(t.album, 120 - Math.min(i, 100)));
   artistAlbums.forEach(a => bump(a, 18));                     // deep catalogue fill
 
   return [...albums.values()]
@@ -134,19 +153,8 @@ async function fetchTopTracks(range) {
   return out;
 }
 
-// Top tracks from the time ranges the user ISN'T currently viewing.
-async function fetchOtherTopTracks(current) {
-  const ranges = ["short_term", "medium_term", "long_term"].filter(r => r !== current);
-  const out = [];
-  for (const r of ranges) {
-    const data = await safe(() => api(`/me/top/tracks?limit=50&time_range=${r}`));
-    (data?.items || []).forEach(t => out.push(t));
-  }
-  return out;
-}
-
 // Walk back through recently-played history via the `before` cursor.
-async function fetchRecent(maxPages = 5) {
+async function fetchRecent(maxPages = 3) {
   const out = [];
   let url = "/me/player/recently-played?limit=50";
   for (let p = 0; p < maxPages; p++) {
@@ -162,23 +170,22 @@ async function fetchRecent(maxPages = 5) {
 
 // Saved albums from "Your Library".
 function fetchSavedAlbums() {
-  return paginate("/me/albums?limit=50", 4, it => it.album);
+  return paginate("/me/albums?limit=50", 3, it => it.album);
 }
 
 // Albums behind the user's liked songs.
 function fetchLikedTrackAlbums() {
-  return paginate("/me/tracks?limit=50", 3, it => it.track && it.track.album);
+  return paginate("/me/tracks?limit=50", 2, it => it.track && it.track.album);
 }
 
 // Full studio albums by the user's top artists (market-filtered to cut
-// cross-market duplicates), fetched in parallel.
+// cross-market duplicates). Kept small + throttled to respect rate limits.
 async function fetchTopArtistAlbums() {
   const market = await getMarket();
   const data = await api("/me/top/artists?limit=50&time_range=medium_term");
-  const artists = (data?.items || []).slice(0, 20);
+  const artists = (data?.items || []).slice(0, 8);
   const mkt = market ? `&market=${market}` : "";
-  // Throttle to a few in flight so we don't trip Spotify's rate limit.
-  const lists = await mapLimit(artists, 4, ar =>
+  const lists = await mapLimit(artists, 3, ar =>
     safe(() => api(`/artists/${ar.id}/albums?include_groups=album&limit=20${mkt}`))
   );
   const out = [];
