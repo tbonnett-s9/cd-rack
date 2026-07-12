@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="theme-color" content="#141414" />
 <title>CD Rack</title>
-<link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/styles.css?v=4" />
 
 <div id="app">
   <!-- Login screen -->
@@ -44,9 +44,17 @@
       </div>
     </header>
 
+    <div id="filterBar" class="filters" hidden>
+      <button data-type="all" class="active">All</button>
+      <button data-type="album">Albums</button>
+      <button data-type="single">Singles</button>
+      <button data-type="compilation">Compilations</button>
+    </div>
+
     <div id="rackWrap">
       <div class="shelf"><div id="rackTop" class="rack"></div></div>
       <div class="shelf"><div id="rackBottom" class="rack"></div></div>
+      <div id="rackEmpty" class="rack-empty" hidden></div>
     </div>
 
     <div id="rackLoading" class="rack-loading">Loading your shelf…</div>
@@ -54,4 +62,4 @@
 
 </div>
 
-<script type="module" src="js/app.js?v=3"></script>
+<script type="module" src="js/app.js?v=4"></script>

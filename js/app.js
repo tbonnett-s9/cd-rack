@@ -1,15 +1,16 @@
 // App entry point: wires auth, data, rendering, and playback together.
-import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js?v=3";
+import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js?v=4";
 import { getAlbums, getAlbumTracks, pickDevice, playAlbum,
-         searchArtists, getArtistDiscography, isRateLimited } from "./api.js?v=3";
-import { renderRack, makePanel } from "./rack.js?v=3";
+         searchArtists, getArtistDiscography, isRateLimited } from "./api.js?v=4";
+import { renderRack, makePanel } from "./rack.js?v=4";
 
 const el = id => document.getElementById(id);
 const show = (id, on) => { el(id).hidden = !on; };
 
 // The rack shows one "view" at a time: a library range, or an artist's discography.
 let currentView = { type: "range", range: "recent" };
-let currentAlbums = [];       // albums currently on the shelves
+let currentAlbums = [];       // full (unfiltered) album list for the current view
+let currentFilter = "all";    // "all" | "album" | "single" | "compilation"
 let albumCache = {};          // view key → albums[]
 let openState = null;         // { spineEl, panelEl }
 
@@ -34,6 +35,7 @@ function showMain() {
 function selectRange(range) {
   currentView = { type: "range", range };
   el("artistChip").hidden = true;
+  resetFilter();
   [...document.querySelectorAll("#rangeTabs button")].forEach(b =>
     b.classList.toggle("active", b.dataset.range === range));
   loadCurrent(false);
@@ -42,6 +44,7 @@ function selectRange(range) {
 // ── Switch to an artist's discography ───────────────────────
 function selectArtist(id, name) {
   currentView = { type: "artist", id, name };
+  resetFilter();
   [...document.querySelectorAll("#rangeTabs button")].forEach(b => b.classList.remove("active"));
   const chip = el("artistChip");
   chip.hidden = false;
@@ -121,9 +124,37 @@ async function loadCurrent(force) {
   updateDeviceLabel();
 }
 
-// Lay albums onto one or two shelves depending on the screen height.
+// Store the full list, then filter + lay out.
 function renderShelves(albums) {
   currentAlbums = albums;
+  applyFilterAndLayout();
+}
+
+// Reset the type filter back to "All" (on a new view).
+function resetFilter() {
+  currentFilter = "all";
+  [...document.querySelectorAll("#filterBar button")].forEach(b =>
+    b.classList.toggle("active", b.dataset.type === "all"));
+}
+
+// Apply the current type filter and lay albums onto one or two shelves.
+function applyFilterAndLayout() {
+  const hasAny = !!(currentAlbums && currentAlbums.length);
+  el("filterBar").hidden = !hasAny;
+
+  const albums = currentFilter === "all"
+    ? currentAlbums
+    : currentAlbums.filter(a => a.type === currentFilter);
+
+  const empty = el("rackEmpty");
+  if (hasAny && !albums.length) {
+    const labels = { album: "albums", single: "singles", compilation: "compilations" };
+    empty.textContent = "No " + (labels[currentFilter] || "items") + " here.";
+    empty.hidden = false;
+  } else {
+    empty.hidden = true;
+  }
+
   const single = window.innerHeight < ONE_SHELF_MAX_HEIGHT;
   el("rackWrap").classList.toggle("single", single);
   if (single) {
@@ -246,6 +277,15 @@ function wireEvents() {
   el("refreshBtn").addEventListener("click", () => loadCurrent(true));
   [...document.querySelectorAll("#rangeTabs button")].forEach(b =>
     b.addEventListener("click", () => selectRange(b.dataset.range)));
+
+  // Type filter (All / Albums / Singles / Compilations).
+  [...document.querySelectorAll("#filterBar button")].forEach(b =>
+    b.addEventListener("click", () => {
+      currentFilter = b.dataset.type;
+      [...document.querySelectorAll("#filterBar button")].forEach(x => x.classList.toggle("active", x === b));
+      closeAlbum();
+      applyFilterAndLayout();
+    }));
 
   // Artist chip ✕ → back to the last library range.
   el("artistChip").querySelector(".chip-close").addEventListener("click", () =>

@@ -114,8 +114,21 @@ html, body {
 .search-result .sr-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .search-result .sr-sub { color: var(--muted); font-size: .75rem; }
 
+/* ── Type filter bar ──────────────────────────────────── */
+.filters {
+  display: flex; gap: .4rem; padding: 0 1.2rem .4rem; flex: 0 0 auto;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.filters button {
+  border: 0; background: rgba(255,255,255,.06); color: var(--muted);
+  padding: .35rem .95rem; border-radius: 999px; font-size: .85rem;
+  cursor: pointer; touch-action: manipulation; white-space: nowrap;
+}
+.filters button.active { background: rgba(255,255,255,.16); color: var(--ink); font-weight: 600; }
+
 /* ── The rack: framed tray holding one or two shelves ── */
 #rackWrap {
+  position: relative;
   flex: 1 1 auto; min-height: 0; overflow: hidden;
   margin: .2rem 1.1rem 1.2rem; padding: 1rem 1.1rem .9rem;
   display: flex; flex-direction: column; gap: 1.1rem;
@@ -196,9 +209,11 @@ html, body {
   overflow: hidden; text-overflow: ellipsis; max-height: 100%;
   text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.8); }
 
-/* ── Loading state ──────────────────────────────────── */
+/* ── Loading / empty states ─────────────────────────── */
 .rack-loading { position: absolute; inset: 0; display: flex; align-items: center;
   justify-content: center; color: var(--muted); font-size: 1.1rem; text-align: center; padding: 2rem; }
+.rack-empty { position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; color: var(--muted); font-size: 1rem; pointer-events: none; }
 
 /* ── Inline track panel (slides out next to the open cover) ── */
 .track-panel {
