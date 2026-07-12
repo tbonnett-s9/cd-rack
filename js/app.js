@@ -1,8 +1,8 @@
 // App entry point: wires auth, data, rendering, and playback together.
-import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js";
+import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js?v=2";
 import { getAlbums, getAlbumTracks, pickDevice, playAlbum,
-         searchArtists, getArtistDiscography, isRateLimited } from "./api.js";
-import { renderRack, makePanel } from "./rack.js";
+         searchArtists, getArtistDiscography, isRateLimited } from "./api.js?v=2";
+import { renderRack, makePanel } from "./rack.js?v=2";
 
 const el = id => document.getElementById(id);
 const show = (id, on) => { el(id).hidden = !on; };

@@ -1,5 +1,5 @@
 // Spotify Authorization Code + PKCE flow — fully client-side, no secret.
-import { CLIENT_ID, SCOPES, REDIRECT_URI } from "./config.js";
+import { CLIENT_ID, SCOPES, REDIRECT_URI } from "./config.js?v=2";
 
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const AUTH_URL = "https://accounts.spotify.com/authorize";

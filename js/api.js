@@ -1,6 +1,6 @@
 // Thin wrapper over the Spotify Web API.
-import { getAccessToken } from "./auth.js";
-import { MAX_ALBUMS } from "./config.js";
+import { getAccessToken } from "./auth.js?v=2";
+import { MAX_ALBUMS } from "./config.js?v=2";
 
 const BASE = "https://api.spotify.com/v1";
 
