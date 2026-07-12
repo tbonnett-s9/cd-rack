@@ -15,7 +15,7 @@ let albumCache = {};          // view key → albums[]
 let openState = null;         // { spineEl, panelEl }
 
 // Below this viewport height, use a single shelf (two would be too short).
-const ONE_SHELF_MAX_HEIGHT = 640;
+const ONE_SHELF_MAX_HEIGHT = 800;
 
 // ── Screens ─────────────────────────────────────────────────
 function showLogin(errMsg) {
