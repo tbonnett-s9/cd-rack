@@ -69,6 +69,29 @@ body { background: -webkit-radial-gradient(50% 0%, 120% 90%, #201d27, #0b0a0e 70
 }
 .card.off input[type=range]::-webkit-slider-thumb { background: #8a857c; }
 
+/* Colours & scenes */
+.expand {
+  margin-top: 3.5vw; width: 100%; background: rgba(255,255,255,.08); color: #cfc9bf;
+  border: 0; border-radius: 999px; padding: 2.4vw; font-size: 3.4vw; cursor: pointer;
+}
+.more { display: none; margin-top: 3vw; }
+.more.open { display: block; }
+.swatches {
+  display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap;
+  -webkit-justify-content: center; justify-content: center;
+}
+.swatch {
+  width: 9vw; height: 9vw; border-radius: 50%; margin: 1.4vw;
+  border: 2px solid rgba(255,255,255,.3); cursor: pointer;
+}
+.swatch:active { -webkit-transform: scale(.9); transform: scale(.9); }
+.scenes { margin-top: 2.5vw; text-align: center; }
+.scene-btn {
+  background: rgba(255,255,255,.1); color: #f2efe9; border: 0; border-radius: 999px;
+  padding: 2vw 3.5vw; font-size: 3.4vw; margin: 1.2vw; cursor: pointer;
+}
+.scene-btn:active { -webkit-transform: scale(.95); transform: scale(.95); }
+
 /* Setup screen */
 #setup { max-width: 560px; margin: 0 auto; }
 #setup h1 { font-size: 7vw; margin-bottom: 3vw; }
@@ -96,6 +119,8 @@ body { background: -webkit-radial-gradient(50% 0%, 120% 90%, #201d27, #0b0a0e 70
   .card input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; margin-top: -9px; }
   #setup h1 { font-size: 34px; } #setup p, #setup .btn, #setup input, #status { font-size: 18px; }
   #setup .btn { padding: 14px 26px; }
+  .expand { font-size: 15px; padding: 11px; } .swatch { width: 34px; height: 34px; }
+  .scene-btn { font-size: 15px; padding: 9px 15px; }
 }
 </style>
 </head>
@@ -169,11 +194,58 @@ body { background: -webkit-radial-gradient(50% 0%, 120% 90%, #201d27, #0b0a0e 70
 
   /* ── Panel ── */
   var interacting = 0;
+  var expandedId = null;
+  var scenesByGroup = {};
+  var lightCaps = {};          // lightId -> { color: bool, ct: bool }
+
+  // Colour swatches (need a colour-capable bulb)
+  var HUES = [
+    { name: "Red",    css: "#ff3b30", act: { on: true, hue: 0,     sat: 254 } },
+    { name: "Orange", css: "#ff9500", act: { on: true, hue: 5000,  sat: 254 } },
+    { name: "Yellow", css: "#ffcc00", act: { on: true, hue: 11000, sat: 254 } },
+    { name: "Green",  css: "#34c759", act: { on: true, hue: 25500, sat: 254 } },
+    { name: "Cyan",   css: "#32ade6", act: { on: true, hue: 39000, sat: 254 } },
+    { name: "Blue",   css: "#0a84ff", act: { on: true, hue: 46920, sat: 254 } },
+    { name: "Purple", css: "#bf5af2", act: { on: true, hue: 50000, sat: 254 } },
+    { name: "Pink",   css: "#ff2d92", act: { on: true, hue: 56100, sat: 254 } }
+  ];
+  // White temperature swatches (need a colour or ambiance bulb)
+  var WHITES = [
+    { name: "Warm", css: "#ffd9a0", act: { on: true, ct: 454 } },
+    { name: "Cool", css: "#dbeeff", act: { on: true, ct: 200 } }
+  ];
+
   function initPanel() {
     show("setup", false); show("panel", true);
     el("allOn").onclick = function () { setGroup(0, { on: true }); };
     el("allOff").onclick = function () { setGroup(0, { on: false }); };
-    loadGroups();
+    // Learn each light's capabilities, then scenes, then load the rooms.
+    req("GET", "/hue/lights", null, function (lights) {
+      lightCaps = {};
+      if (lights && !lights.error) {
+        for (var lid in lights) {
+          if (!lights.hasOwnProperty(lid)) continue;
+          var st = lights[lid].state || {};
+          lightCaps[lid] = {
+            color: (st.hue !== undefined || st.xy !== undefined),
+            ct: (st.ct !== undefined)
+          };
+        }
+      }
+      req("GET", "/hue/scenes", null, function (scenes) {
+        scenesByGroup = {};
+        if (scenes && !scenes.error) {
+          for (var sid in scenes) {
+            if (!scenes.hasOwnProperty(sid)) continue;
+            var gid = scenes[sid].group;
+            if (!gid) continue;
+            if (!scenesByGroup[gid]) scenesByGroup[gid] = [];
+            scenesByGroup[gid].push({ id: sid, name: scenes[sid].name });
+          }
+        }
+        loadGroups();
+      });
+    });
     window.setInterval(function () { if (!interacting) loadGroups(); }, 12000);
   }
 
@@ -190,8 +262,21 @@ body { background: -webkit-radial-gradient(50% 0%, 120% 90%, #201d27, #0b0a0e 70
     });
   }
 
+  function makeSwatch(id, c) {
+    var b = document.createElement("div");
+    b.className = "swatch"; b.style.background = c.css; b.title = c.name;
+    b.onclick = function () { setGroup(id, c.act); };
+    return b;
+  }
+  function makeSceneBtn(id, s) {
+    var b = document.createElement("button");
+    b.className = "scene-btn"; b.textContent = s.name;
+    b.onclick = function () { setGroup(id, { scene: s.id }); };
+    return b;
+  }
+
   function makeCard(id, g) {
-    var on = g.state && g.state.any_on;
+    var on = !!(g.state && g.state.any_on);
     var bri = (g.action && typeof g.action.bri === "number") ? g.action.bri : 128;
     var card = document.createElement("div");
     card.className = "card " + (on ? "on" : "off");
@@ -205,22 +290,60 @@ body { background: -webkit-radial-gradient(50% 0%, 120% 90%, #201d27, #0b0a0e 70
     slider.type = "range"; slider.min = 1; slider.max = 254; slider.value = bri;
 
     tog.onclick = function () {
-      var nowOn = card.className.indexOf(" on") === -1 ? false : true;
-      // toggle based on current class
-      var turnOn = card.className.indexOf("on") === -1;
-      // simpler: read 'on' token
-      turnOn = !(card.className.split(" ").indexOf("on") >= 0);
-      setGroup(id, { on: turnOn });
-      card.className = "card " + (turnOn ? "on" : "off");
+      on = !on;
+      setGroup(id, { on: on });
+      card.className = "card " + (on ? "on" : "off");
     };
     slider.onchange = function () {
       setGroup(id, { on: true, bri: parseInt(slider.value, 10) });
-      card.className = "card on";
+      on = true; card.className = "card on";
     };
     slider.ontouchstart = function () { interacting++; };
     slider.ontouchend = function () { interacting = Math.max(0, interacting - 1); };
 
     card.appendChild(row); card.appendChild(slider);
+
+    // What can this room's bulbs actually do?
+    var hasColor = false, hasCt = false, lights = g.lights || [];
+    for (var k = 0; k < lights.length; k++) {
+      var cap = lightCaps[lights[k]];
+      if (cap) { if (cap.color) hasColor = true; if (cap.ct) hasCt = true; }
+    }
+    var scs = scenesByGroup[id] || [];
+
+    if (hasColor || hasCt || scs.length) {
+      var labels = [];
+      if (hasColor || hasCt) labels.push("Colours");
+      if (scs.length) labels.push("Scenes");
+
+      var expand = document.createElement("button");
+      expand.className = "expand"; expand.textContent = labels.join(" & ");
+
+      var more = document.createElement("div");
+      more.className = "more" + (expandedId === id ? " open" : "");
+
+      if (hasColor || hasCt) {
+        var sw = document.createElement("div"); sw.className = "swatches";
+        if (hasColor) for (var i = 0; i < HUES.length; i++) sw.appendChild(makeSwatch(id, HUES[i]));
+        if (hasCt) for (var w = 0; w < WHITES.length; w++) sw.appendChild(makeSwatch(id, WHITES[w]));
+        more.appendChild(sw);
+      }
+      if (scs.length) {
+        var sd = document.createElement("div"); sd.className = "scenes";
+        for (var j = 0; j < scs.length; j++) sd.appendChild(makeSceneBtn(id, scs[j]));
+        more.appendChild(sd);
+      }
+      expand.onclick = (function (moreEl, gid) {
+        return function () {
+          var open = moreEl.className.indexOf("open") >= 0;
+          moreEl.className = open ? "more" : "more open";
+          expandedId = open ? null : gid;
+        };
+      })(more, id);
+
+      card.appendChild(expand); card.appendChild(more);
+    }
+
     return card;
   }
 
