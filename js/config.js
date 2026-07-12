@@ -30,3 +30,7 @@ export const REDIRECT_URI = window.location.origin + window.location.pathname;
 
 // How many albums to show on the shelf (split across the two shelves).
 export const MAX_ALBUMS = 250;
+
+// Country market (ISO 3166-1 alpha-2) for artist discographies. Using a single
+// market avoids the same album being listed once per country. Change to yours.
+export const MARKET = "GB";

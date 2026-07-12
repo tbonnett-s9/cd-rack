@@ -1,6 +1,6 @@
 // Thin wrapper over the Spotify Web API.
-import { getAccessToken } from "./auth.js?v=2";
-import { MAX_ALBUMS } from "./config.js?v=2";
+import { getAccessToken } from "./auth.js?v=3";
+import { MAX_ALBUMS, MARKET } from "./config.js?v=3";
 
 const BASE = "https://api.spotify.com/v1";
 
@@ -175,13 +175,6 @@ function fetchLikedTrackAlbums() {
   return paginate("/me/tracks?limit=50", 2, it => it.track && it.track.album);
 }
 
-let _market = null;
-async function getMarket() {
-  if (_market) return _market;
-  try { const me = await api("/me"); _market = me && me.country; } catch {}
-  return _market;
-}
-
 // Full track listing for one album.
 export async function getAlbumTracks(albumId) {
   const data = await api(`/albums/${albumId}/tracks?limit=50`);
@@ -211,13 +204,13 @@ export async function searchArtists(query) {
 // (deluxe, remaster, single, etc.); only exact-duplicate IDs from
 // pagination are collapsed.
 export async function getArtistDiscography(artistId) {
-  const market = await getMarket();
-  const mkt = market ? `&market=${market}` : "";
   const byId = new Map();
-  let path = `/artists/${artistId}/albums?include_groups=album,single,compilation&limit=50${mkt}`;
-  for (let p = 0; p < 5; p++) {
+  // This endpoint caps `limit` far lower than the library endpoints (50 → 400
+  // "Invalid limit"), so page in small chunks and follow `next`.
+  let path = `/artists/${artistId}/albums?include_groups=album,single,compilation&limit=10&market=${MARKET}`;
+  for (let p = 0; p < 20; p++) {
     const data = await api(path);
-    (data?.items || []).forEach(a => { if (!byId.has(a.id)) byId.set(a.id, a); });
+    (data?.items || []).forEach(a => { if (a && a.id && !byId.has(a.id)) byId.set(a.id, a); });
     if (!data?.next) break;
     path = data.next.replace("https://api.spotify.com/v1", "");
   }
