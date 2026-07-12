@@ -1,6 +1,6 @@
 // Thin wrapper over the Spotify Web API.
-import { getAccessToken } from "./auth.js?v=4";
-import { MAX_ALBUMS, MARKET } from "./config.js?v=4";
+import { getAccessToken } from "./auth.js?v=6";
+import { MAX_ALBUMS, MARKET } from "./config.js?v=6";
 
 const BASE = "https://api.spotify.com/v1";
 
@@ -238,4 +238,21 @@ export async function playAlbum(albumUri, deviceId, offsetUri) {
   const body = { context_uri: albumUri };
   if (offsetUri) body.offset = { uri: offsetUri };
   await api(`/me/player/play${q}`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+// ── Now-playing / transport ─────────────────────────────────
+export async function getPlayback() { return api("/me/player"); } // null when nothing active
+export async function resumePlayback(deviceId) {
+  const q = deviceId ? `?device_id=${deviceId}` : "";
+  await api(`/me/player/play${q}`, { method: "PUT" });
+}
+export async function pausePlayback() { await api("/me/player/pause", { method: "PUT" }); }
+export async function nextTrack() { await api("/me/player/next", { method: "POST" }); }
+export async function prevTrack() { await api("/me/player/previous", { method: "POST" }); }
+export async function seekTo(ms) { await api(`/me/player/seek?position_ms=${Math.round(ms)}`, { method: "PUT" }); }
+export async function setVolume(pct) { await api(`/me/player/volume?volume_percent=${Math.round(pct)}`, { method: "PUT" }); }
+export async function setShuffle(on) { await api(`/me/player/shuffle?state=${on ? "true" : "false"}`, { method: "PUT" }); }
+export async function setRepeat(mode) { await api(`/me/player/repeat?state=${mode}`, { method: "PUT" }); }
+export async function transferPlayback(deviceId, play) {
+  await api("/me/player", { method: "PUT", body: JSON.stringify({ device_ids: [deviceId], play: !!play }) });
 }

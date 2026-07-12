@@ -1,8 +1,9 @@
 // App entry point: wires auth, data, rendering, and playback together.
-import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js?v=4";
+import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js?v=6";
 import { getAlbums, getAlbumTracks, pickDevice, playAlbum,
-         searchArtists, getArtistDiscography, isRateLimited } from "./api.js?v=4";
-import { renderRack, makePanel } from "./rack.js?v=4";
+         searchArtists, getArtistDiscography, isRateLimited } from "./api.js?v=6";
+import { renderRack, makePanel } from "./rack.js?v=6";
+import { initPlayer, refreshPlayer } from "./player.js?v=6";
 
 const el = id => document.getElementById(id);
 const show = (id, on) => { el(id).hidden = !on; };
@@ -237,6 +238,7 @@ async function startPlayback(album, offsetUri) {
     }
     await playAlbum(album.uri, device.id, offsetUri);
     playHint(`Playing on ${device.name} ▶`, false);
+    refreshPlayer();
   } catch (err) {
     if (err.status === 403) {
       playHint("Playback control needs Spotify Premium.", true);
@@ -246,6 +248,15 @@ async function startPlayback(album, offsetUri) {
       playHint("Couldn't start playback: " + err.message, true);
     }
   }
+}
+
+// Play a random album from the current (filtered) shelf.
+function surprise() {
+  const pool = currentFilter === "all"
+    ? currentAlbums
+    : currentAlbums.filter(a => a.type === currentFilter);
+  if (!pool.length) return;
+  onPlayAlbum(pool[Math.floor(Math.random() * pool.length)]);
 }
 
 async function updateDeviceLabel() {
@@ -275,6 +286,7 @@ function wireEvents() {
   });
   el("logoutBtn").addEventListener("click", () => { logout(); showLogin(); });
   el("refreshBtn").addEventListener("click", () => loadCurrent(true));
+  el("surpriseBtn").addEventListener("click", surprise);
   [...document.querySelectorAll("#rangeTabs button")].forEach(b =>
     b.addEventListener("click", () => selectRange(b.dataset.range)));
 
@@ -367,6 +379,7 @@ async function boot() {
     if (returned || isLoggedIn()) {
       showMain();
       selectRange("recent");
+      initPlayer();
     } else {
       showLogin();
     }

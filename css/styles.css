@@ -266,3 +266,67 @@ html, body {
 .track-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .track-time { flex: 0 0 auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 .track.loading { color: var(--muted); justify-content: center; }
+
+/* ── Now-playing bar ─────────────────────────────────── */
+.nowbar {
+  position: relative; flex: 0 0 auto;
+  background: linear-gradient(#1c1712, #100d0b);
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.np-seek {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px; margin: 0; display: block;
+  background: rgba(255,255,255,.14); cursor: pointer;
+}
+.np-seek::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); margin-top: -5px; }
+.np-seek::-moz-range-thumb { width: 13px; height: 13px; border: 0; border-radius: 50%; background: var(--accent); }
+.np-inner { display: flex; align-items: center; gap: 1rem; padding: .55rem 1rem; }
+.np-art { width: 52px; height: 52px; border-radius: 6px; object-fit: cover; background: #000; flex: 0 0 auto; }
+.np-meta { min-width: 0; flex: 1 1 26%; }
+.np-title { font-weight: 600; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-artist { color: var(--muted); font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-controls { display: flex; align-items: center; gap: .2rem; flex: 0 0 auto; }
+.np-btn { border: 0; background: transparent; color: var(--ink); font-size: 1.15rem;
+  width: 42px; height: 42px; border-radius: 50%; cursor: pointer; touch-action: manipulation; }
+.np-btn:active { transform: scale(.9); }
+.np-btn.active { color: var(--accent); }
+.np-play { font-size: 1.5rem; }
+.np-times { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; flex: 0 0 auto; white-space: nowrap; }
+.np-right { display: flex; align-items: center; gap: .6rem; position: relative; flex: 1 1 22%; justify-content: flex-end; }
+.np-device { border: 0; background: rgba(255,255,255,.08); color: var(--ink); border-radius: 999px;
+  padding: .4rem .8rem; font-size: .82rem; cursor: pointer; max-width: 46%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-vol { -webkit-appearance: none; appearance: none; width: 92px; height: 4px; border-radius: 999px;
+  background: rgba(255,255,255,.18); cursor: pointer; }
+.np-vol::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; margin-top: -5px; }
+.np-vol::-moz-range-thumb { width: 13px; height: 13px; border: 0; border-radius: 50%; background: #fff; }
+.device-picker {
+  position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 60; min-width: 210px;
+  background: #1b1714; border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+  box-shadow: 0 18px 46px rgba(0,0,0,.6); overflow: hidden; padding: 4px;
+}
+.dp-item { display: block; width: 100%; text-align: left; border: 0; background: transparent;
+  color: var(--ink); padding: .6rem .7rem; border-radius: 8px; font-size: .9rem; cursor: pointer; }
+.dp-item:active { background: rgba(255,255,255,.08); }
+.dp-item.active { color: var(--accent); font-weight: 600; }
+.dp-msg { color: var(--muted); font-size: .82rem; padding: .6rem .7rem; }
+
+@media (max-width: 640px) {
+  .np-times, .np-vol { display: none; }
+  .np-device { max-width: 84px; }
+}
+
+/* ── Ambient (idle now-playing) overlay ──────────────── */
+.ambient {
+  position: fixed; inset: 0; z-index: 200; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  background: #000; opacity: 0; -webkit-transition: opacity .5s ease; transition: opacity .5s ease;
+}
+.ambient.show { opacity: 1; }
+.amb-bg { position: absolute; inset: -12%; background-size: cover; background-position: center;
+  -webkit-filter: blur(60px) brightness(.5); filter: blur(60px) brightness(.5);
+  -webkit-transform: scale(1.2); transform: scale(1.2); }
+.amb-content { position: relative; z-index: 1; padding: 2rem; }
+.amb-art { width: 44vmin; height: 44vmin; max-width: 460px; max-height: 460px; border-radius: 14px;
+  object-fit: cover; box-shadow: 0 30px 90px rgba(0,0,0,.7); background: #111; }
+.amb-title { margin-top: 4vmin; font-size: 3.4vmin; font-weight: 700; }
+.amb-artist { margin-top: 1vmin; font-size: 2.4vmin; color: rgba(255,255,255,.75); }

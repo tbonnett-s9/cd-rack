@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="theme-color" content="#141414" />
 <title>CD Rack</title>
-<link rel="stylesheet" href="css/styles.css?v=5" />
+<link rel="stylesheet" href="css/styles.css?v=6" />
 
 <div id="app">
   <!-- Login screen -->
@@ -39,6 +39,7 @@
       </div>
       <div class="topbar-right">
         <span id="deviceLabel" class="device-label"></span>
+        <button id="surpriseBtn" class="btn-ghost" title="Surprise me">🎲</button>
         <button id="refreshBtn" class="btn-ghost" title="Refresh">↻</button>
         <button id="logoutBtn" class="btn-ghost" title="Disconnect">⏻</button>
       </div>
@@ -58,8 +59,43 @@
     </div>
 
     <div id="rackLoading" class="rack-loading">Loading your shelf…</div>
+
+    <!-- Now-playing bar -->
+    <div id="nowbar" class="nowbar" hidden>
+      <input id="npSeek" class="np-seek" type="range" min="0" max="1000" value="0" />
+      <div class="np-inner">
+        <img id="npArt" class="np-art" alt="" />
+        <div class="np-meta">
+          <div id="npTitle" class="np-title"></div>
+          <div id="npArtist" class="np-artist"></div>
+        </div>
+        <div class="np-controls">
+          <button id="npShuffle" class="np-btn" title="Shuffle">🔀</button>
+          <button id="npPrev" class="np-btn" title="Previous">⏮</button>
+          <button id="npPlay" class="np-btn np-play" title="Play/Pause">▶</button>
+          <button id="npNext" class="np-btn" title="Next">⏭</button>
+          <button id="npRepeat" class="np-btn" title="Repeat">🔁</button>
+        </div>
+        <div class="np-times"><span id="npCur">0:00</span> / <span id="npDur">0:00</span></div>
+        <div class="np-right">
+          <button id="npDevice" class="np-device" title="Choose device">♪ Device</button>
+          <input id="npVol" class="np-vol" type="range" min="0" max="100" value="50" title="Volume" />
+          <div id="devicePicker" class="device-picker" hidden></div>
+        </div>
+      </div>
+    </div>
   </section>
 
 </div>
 
-<script type="module" src="js/app.js?v=5"></script>
+<!-- Idle ambient (now-playing) overlay -->
+<div id="ambient" class="ambient" hidden>
+  <div id="ambBg" class="amb-bg"></div>
+  <div class="amb-content">
+    <img id="ambArt" class="amb-art" alt="" />
+    <div id="ambTitle" class="amb-title"></div>
+    <div id="ambArtist" class="amb-artist"></div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js?v=6"></script>
