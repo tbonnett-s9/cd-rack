@@ -210,7 +210,11 @@ html, body {
     weatherEl.innerHTML = html;
   }
 
+  var hasWeather = false;
+  function weatherMsg(m) { if (!hasWeather) weatherEl.textContent = m; }
+
   function loadWeather() {
+    weatherMsg("Loading weather…");
     var unit = CONFIG.units === "fahrenheit" ? "fahrenheit" : "celsius";
     var url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.lat +
               "&longitude=" + CONFIG.lon +
@@ -219,12 +223,18 @@ html, body {
               "&timezone=auto&forecast_days=1&temperature_unit=" + unit;
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
+    try { xhr.timeout = 12000; } catch (e) {}
     xhr.onreadystatechange = function () {
       if (xhr.readyState !== 4) return;
       if (xhr.status >= 200 && xhr.status < 300) {
-        try { showWeather(JSON.parse(xhr.responseText)); } catch (e) {}
+        try { showWeather(JSON.parse(xhr.responseText)); hasWeather = true; }
+        catch (e) { weatherMsg("Weather data error"); }
+      } else {
+        weatherMsg("Weather unavailable (status " + xhr.status + ")");
       }
     };
+    xhr.onerror = function () { weatherMsg("Weather unreachable (network/TLS)"); };
+    xhr.ontimeout = function () { weatherMsg("Weather timed out"); };
     xhr.send();
   }
 
