@@ -88,9 +88,28 @@ html, body {
 }
 .weather .ic { font-size: 4vw; margin-right: 1.2vw; }
 .weather .dot { margin: 0 1.4vw; opacity: .5; }
+/* ── 5-day forecast ── */
+.forecast {
+  margin-top: 4vh;
+  display: -webkit-flex; display: flex;
+  -webkit-justify-content: center; justify-content: center;
+}
+.fc-day {
+  display: -webkit-flex; display: flex;
+  -webkit-flex-direction: column; flex-direction: column;
+  -webkit-align-items: center; align-items: center;
+  margin: 0 1.6vw; min-width: 12vw;
+}
+.fc-name { font-size: 2.1vw; color: #a79f94; margin-bottom: .6vh; letter-spacing: .5px; }
+.fc-ic { font-size: 4vw; margin: .3vh 0 .6vh; }
+.fc-temp { font-size: 2.2vw; color: #8f877c; }
+.fc-temp b { color: #f0ebe4; font-weight: 700; }
+
 @media (min-width: 700px) {
   .date { font-size: 26px; } .weather { font-size: 22px; } .weather .ic { font-size: 30px; }
   .colon { font-size: 90px; }
+  .fc-name { font-size: 16px; } .fc-ic { font-size: 30px; } .fc-temp { font-size: 17px; }
+  .fc-day { min-width: 84px; margin: 0 12px; }
 }
 </style>
 </head>
@@ -110,6 +129,7 @@ html, body {
   </div>
   <div class="date" id="date">&nbsp;</div>
   <div class="weather" id="weather">&nbsp;</div>
+  <div class="forecast" id="forecast"></div>
 </div>
 
 <script>
@@ -119,9 +139,9 @@ html, body {
   /* ── CONFIG — edit these, or pass in the URL:
        ?lat=51.5&lon=-0.12&place=London&units=fahrenheit&geo=1&hour12=1  ── */
   var CONFIG = {
-    lat: 51.5072,          // default: London
-    lon: -0.1276,
-    place: "London",
+    lat: 52.45936,         // Beccles, Suffolk
+    lon: 1.56465,
+    place: "Beccles",
     units: "celsius",      // or "fahrenheit"
     hour24: true,          // 24-hour clock
     useGeo: false,         // ask the device for its location
@@ -143,13 +163,21 @@ html, body {
   if (q.geo) CONFIG.useGeo = true;
 
   var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var SHORTDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   var MONTHS = ["January","February","March","April","May","June","July",
                 "August","September","October","November","December"];
+
+  function shortDay(dateStr) {
+    var p = dateStr.split("-");
+    var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    return SHORTDAYS[dt.getDay()];
+  }
 
   function digitsOf(id) { return document.getElementById(id).getElementsByClassName("digit"); }
   var H = digitsOf("hours"), M = digitsOf("mins"), S = digitsOf("secs");
   var dateEl = document.getElementById("date");
   var weatherEl = document.getElementById("weather");
+  var forecastEl = document.getElementById("forecast");
 
   function two(n) { n = "" + n; return n.length < 2 ? "0" + n : n; }
 
@@ -198,6 +226,7 @@ html, body {
   function showWeather(d) {
     if (!d || !d.current || !d.daily) return;
     var deg = "°";
+    // Current conditions line.
     var t = Math.round(d.current.temperature_2m);
     var info = weatherInfo(d.current.weather_code);
     var hi = Math.round(d.daily.temperature_2m_max[0]);
@@ -208,6 +237,22 @@ html, body {
                '<span class="dot">&middot;</span><span>H ' + hi + deg + '&nbsp; L ' + lo + deg + '</span>';
     if (CONFIG.place) html += '<span class="dot">&middot;</span><span>' + CONFIG.place + '</span>';
     weatherEl.innerHTML = html;
+
+    // 5-day forecast row.
+    var days = d.daily.time || [];
+    var fc = "";
+    for (var i = 0; i < days.length && i < 5; i++) {
+      var wi = weatherInfo(d.daily.weather_code[i]);
+      var dhi = Math.round(d.daily.temperature_2m_max[i]);
+      var dlo = Math.round(d.daily.temperature_2m_min[i]);
+      var label = i === 0 ? "Today" : shortDay(days[i]);
+      fc += '<div class="fc-day">' +
+              '<div class="fc-name">' + label + '</div>' +
+              '<div class="fc-ic">' + wi[0] + '</div>' +
+              '<div class="fc-temp"><b>' + dhi + deg + '</b>&nbsp;' + dlo + deg + '</div>' +
+            '</div>';
+    }
+    forecastEl.innerHTML = fc;
   }
 
   var hasWeather = false;
@@ -249,7 +294,7 @@ html, body {
               "&longitude=" + CONFIG.lon +
               "&current=temperature_2m,weather_code" +
               "&daily=temperature_2m_max,temperature_2m_min,weather_code" +
-              "&timezone=auto&forecast_days=1&temperature_unit=" + unit;
+              "&timezone=auto&forecast_days=5&temperature_unit=" + unit;
     getJSON(url, function (data) {
       if (data && data.current) { showWeather(data); hasWeather = true; }
       else weatherMsg("Weather unavailable");

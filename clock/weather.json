@@ -1,11 +1,11 @@
 {
-  "latitude": 51.5,
-  "longitude": -0.25,
-  "generationtime_ms": 0.6792545318603516,
+  "latitude": 52.5,
+  "longitude": 1.5,
+  "generationtime_ms": 1.1309385299682617,
   "utc_offset_seconds": 3600,
   "timezone": "Europe/London",
   "timezone_abbreviation": "GMT+1",
-  "elevation": 16.0,
+  "elevation": 11.0,
   "current_units": {
     "time": "iso8601",
     "interval": "seconds",
@@ -13,10 +13,10 @@
     "weather_code": "wmo code"
   },
   "current": {
-    "time": "2026-07-12T11:45",
+    "time": "2026-07-12T12:00",
     "interval": 900,
-    "temperature_2m": 26.5,
-    "weather_code": 0
+    "temperature_2m": 22.1,
+    "weather_code": 3
   },
   "daily_units": {
     "time": "iso8601",
@@ -26,17 +26,33 @@
   },
   "daily": {
     "time": [
-      "2026-07-12"
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15",
+      "2026-07-16"
     ],
     "temperature_2m_max": [
-      29.1
+      22.7,
+      22.1,
+      24.3,
+      25.4,
+      26.3
     ],
     "temperature_2m_min": [
-      17.4
+      16.1,
+      14.7,
+      17.3,
+      17.2,
+      17.6
     ],
     "weather_code": [
+      3,
+      51,
+      3,
+      2,
       3
     ]
   },
-  "place": "London"
+  "place": "Beccles"
 }
