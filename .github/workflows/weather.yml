@@ -25,7 +25,7 @@ jobs:
 
       - name: Fetch weather
         run: |
-          URL="https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=5&temperature_unit=${UNITS}"
+          URL="https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset&timezone=auto&forecast_days=5&wind_speed_unit=mph&temperature_unit=${UNITS}"
           curl -sf "$URL" | jq --arg place "$PLACE" '. + {place: $place}' > clock/weather.json
 
       - name: Commit if changed

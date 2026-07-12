@@ -27,6 +27,32 @@ html, body {
   -webkit-align-items: center; align-items: center;
   -webkit-justify-content: center; justify-content: center;
   text-align: center;
+  z-index: 1;
+}
+
+/* Ambient slowly-drifting background */
+.bg {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 0;
+  background: -webkit-linear-gradient(45deg, #141219, #241f2e, #14131b, #1e1826, #131118);
+  background: linear-gradient(45deg, #141219, #241f2e, #14131b, #1e1826, #131118);
+  background-size: 400% 400%;
+  -webkit-animation: drift 46s ease-in-out infinite;
+  animation: drift 46s ease-in-out infinite;
+}
+@-webkit-keyframes drift {
+  0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; }
+}
+@keyframes drift {
+  0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; }
+}
+
+/* Night dimming veil (opacity set from JS using sunrise/sunset) */
+.night-veil {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: -webkit-radial-gradient(50% 40%, 120% 100%, rgba(40,18,0,.35), rgba(8,4,0,.92));
+  background: radial-gradient(120% 100% at 50% 40%, rgba(40,18,0,.35), rgba(8,4,0,.92));
+  opacity: 0; pointer-events: none;
+  -webkit-transition: opacity 4s linear; transition: opacity 4s linear;
 }
 
 /* ── Clock ── */
@@ -69,7 +95,10 @@ html, body {
 .colon {
   font-size: 12vw; font-weight: 700; color: #6f6a63;
   padding: 0 1.2vw; -webkit-align-self: center; align-self: center;
+  -webkit-animation: blink 1s ease-in-out infinite; animation: blink 1s ease-in-out infinite;
 }
+@-webkit-keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .28; } }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .28; } }
 .seconds .digit {
   width: 7vw; height: 10vw; max-width: 70px; max-height: 100px;
   margin: 0 3px;
@@ -88,6 +117,10 @@ html, body {
 }
 .weather .ic { font-size: 4vw; margin-right: 1.2vw; }
 .weather .dot { margin: 0 1.4vw; opacity: .5; }
+.weather2 {
+  margin-top: 1vh; font-size: 2.3vw; color: #8f877c;
+}
+.weather2 .dot { margin: 0 1.2vw; opacity: .5; }
 /* ── 5-day forecast ── */
 .forecast {
   margin-top: 4vh;
@@ -107,6 +140,7 @@ html, body {
 
 @media (min-width: 700px) {
   .date { font-size: 26px; } .weather { font-size: 22px; } .weather .ic { font-size: 30px; }
+  .weather2 { font-size: 16px; }
   .colon { font-size: 90px; }
   .fc-name { font-size: 16px; } .fc-ic { font-size: 30px; } .fc-temp { font-size: 17px; }
   .fc-day { min-width: 84px; margin: 0 12px; }
@@ -114,6 +148,7 @@ html, body {
 </style>
 </head>
 <body>
+<div class="bg"></div>
 <div class="wrap">
   <div class="clock">
     <div class="group" id="hours">
@@ -129,8 +164,10 @@ html, body {
   </div>
   <div class="date" id="date">&nbsp;</div>
   <div class="weather" id="weather">&nbsp;</div>
+  <div class="weather2" id="weather2"></div>
   <div class="forecast" id="forecast"></div>
 </div>
+<div class="night-veil" id="veil"></div>
 
 <script>
 (function () {
@@ -177,7 +214,17 @@ html, body {
   var H = digitsOf("hours"), M = digitsOf("mins"), S = digitsOf("secs");
   var dateEl = document.getElementById("date");
   var weatherEl = document.getElementById("weather");
+  var weather2El = document.getElementById("weather2");
   var forecastEl = document.getElementById("forecast");
+  var veilEl = document.getElementById("veil");
+  var sunriseDate = null, sunsetDate = null;
+
+  function parseLocal(s) { // "YYYY-MM-DDTHH:MM" -> Date in local time
+    if (!s) return null;
+    var a = s.split("T"), d = a[0].split("-"), t = (a[1] || "0:0").split(":");
+    return new Date(parseInt(d[0],10), parseInt(d[1],10)-1, parseInt(d[2],10),
+                    parseInt(t[0],10), parseInt(t[1],10), 0);
+  }
 
   function two(n) { n = "" + n; return n.length < 2 ? "0" + n : n; }
 
@@ -204,6 +251,24 @@ html, body {
     setDigit(S[0], ss.charAt(0)); setDigit(S[1], ss.charAt(1));
     dateEl.textContent = DAYS[now.getDay()] + ", " + now.getDate() + " " +
                          MONTHS[now.getMonth()] + " " + now.getFullYear();
+    updateNight();
+  }
+
+  /* Fade a warm dark veil in at night, out during the day. */
+  var NIGHT_MAX = 0.62;
+  function updateNight() {
+    if (!sunriseDate || !sunsetDate) return;
+    var R = 30 * 60 * 1000;                 // 30-min ramp around dawn/dusk
+    var t = (new Date()).getTime();
+    var srA = sunriseDate.getTime() - R, srB = sunriseDate.getTime() + R;
+    var ssA = sunsetDate.getTime() - R, ssB = sunsetDate.getTime() + R;
+    var op;
+    if (t <= srA) op = NIGHT_MAX;                              // before dawn
+    else if (t < srB) op = NIGHT_MAX * (1 - (t - srA) / (srB - srA)); // dawn
+    else if (t <= ssA) op = 0;                                 // day
+    else if (t < ssB) op = NIGHT_MAX * ((t - ssA) / (ssB - ssA)); // dusk
+    else op = NIGHT_MAX;                                        // after dusk
+    veilEl.style.opacity = op;
   }
 
   /* WMO weather code -> emoji + label */
@@ -237,6 +302,23 @@ html, body {
                '<span class="dot">&middot;</span><span>H ' + hi + deg + '&nbsp; L ' + lo + deg + '</span>';
     if (CONFIG.place) html += '<span class="dot">&middot;</span><span>' + CONFIG.place + '</span>';
     weatherEl.innerHTML = html;
+
+    // Detail line: feels-like, wind, sunrise/sunset.
+    var parts2 = [];
+    if (d.current.apparent_temperature != null)
+      parts2.push("Feels " + Math.round(d.current.apparent_temperature) + deg);
+    if (d.current.wind_speed_10m != null)
+      parts2.push("Wind " + Math.round(d.current.wind_speed_10m) + " mph");
+    var sr = d.daily.sunrise && d.daily.sunrise[0];
+    var ssn = d.daily.sunset && d.daily.sunset[0];
+    if (sr) parts2.push("&uarr; " + sr.split("T")[1]);
+    if (ssn) parts2.push("&darr; " + ssn.split("T")[1]);
+    weather2El.innerHTML = parts2.join('<span class="dot">&middot;</span>');
+
+    // Remember sun times for night dimming.
+    sunriseDate = parseLocal(sr);
+    sunsetDate = parseLocal(ssn);
+    updateNight();
 
     // 5-day forecast row.
     var days = d.daily.time || [];
@@ -292,9 +374,9 @@ html, body {
     var unit = CONFIG.units === "fahrenheit" ? "fahrenheit" : "celsius";
     var url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.lat +
               "&longitude=" + CONFIG.lon +
-              "&current=temperature_2m,weather_code" +
-              "&daily=temperature_2m_max,temperature_2m_min,weather_code" +
-              "&timezone=auto&forecast_days=5&temperature_unit=" + unit;
+              "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m" +
+              "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset" +
+              "&timezone=auto&forecast_days=5&wind_speed_unit=mph&temperature_unit=" + unit;
     getJSON(url, function (data) {
       if (data && data.current) { showWeather(data); hasWeather = true; }
       else weatherMsg("Weather unavailable");
