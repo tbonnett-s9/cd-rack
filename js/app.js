@@ -1,9 +1,9 @@
 // App entry point: wires auth, data, rendering, and playback together.
-import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js?v=6";
+import { isLoggedIn, login, logout, handleRedirectCallback } from "./auth.js?v=7";
 import { getAlbums, getAlbumTracks, pickDevice, playAlbum,
-         searchArtists, getArtistDiscography, isRateLimited } from "./api.js?v=6";
-import { renderRack, makePanel } from "./rack.js?v=6";
-import { initPlayer, refreshPlayer } from "./player.js?v=6";
+         searchArtists, getArtistDiscography, isRateLimited } from "./api.js?v=7";
+import { renderRack, makePanel } from "./rack.js?v=7";
+import { initPlayer, refreshPlayer } from "./player.js?v=7";
 
 const el = id => document.getElementById(id);
 const show = (id, on) => { el(id).hidden = !on; };
@@ -14,6 +14,7 @@ let currentAlbums = [];       // full (unfiltered) album list for the current vi
 let currentFilter = "all";    // "all" | "album" | "single" | "compilation"
 let albumCache = {};          // view key → albums[]
 let openState = null;         // { spineEl, panelEl }
+let playingAlbumId = null;    // album currently playing, for the shelf highlight
 
 // Below this viewport height, use a single shelf (two would be too short).
 const ONE_SHELF_MAX_HEIGHT = 800;
@@ -131,6 +132,16 @@ function renderShelves(albums) {
   applyFilterAndLayout();
 }
 
+// Highlight the spine of the album that's currently playing.
+function setNowPlaying(albumId) {
+  playingAlbumId = albumId || null;
+  applyPlayingClass();
+}
+function applyPlayingClass() {
+  [...document.querySelectorAll("#rackWrap .spine")].forEach(s =>
+    s.classList.toggle("playing", !!playingAlbumId && s.dataset.albumId === playingAlbumId));
+}
+
 // Reset the type filter back to "All" (on a new view).
 function resetFilter() {
   currentFilter = "all";
@@ -166,6 +177,7 @@ function applyFilterAndLayout() {
     renderRack(el("rackTop"), albums.slice(0, mid), openAlbum);
     renderRack(el("rackBottom"), albums.slice(mid), openAlbum);
   }
+  applyPlayingClass();   // re-apply the highlight to the freshly-rendered spines
 }
 
 // ── Expand one album in place, inside its shelf ─────────────
@@ -379,7 +391,7 @@ async function boot() {
     if (returned || isLoggedIn()) {
       showMain();
       selectRange("recent");
-      initPlayer();
+      initPlayer(setNowPlaying);
     } else {
       showLogin();
     }

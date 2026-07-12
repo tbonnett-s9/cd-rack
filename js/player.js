@@ -2,7 +2,7 @@
 import {
   getPlayback, resumePlayback, pausePlayback, nextTrack, prevTrack,
   seekTo, setVolume, setShuffle, setRepeat, transferPlayback, getDevices
-} from "./api.js?v=6";
+} from "./api.js?v=7";
 
 const el = id => document.getElementById(id);
 const artOf = it => (it && it.album && it.album.images && it.album.images[0] && it.album.images[0].url) || "";
@@ -15,10 +15,13 @@ let seeking = false;       // user dragging the scrubber
 let volLockUntil = 0;      // ignore incoming volume right after user sets it
 let ambientOn = false;
 let idleTimer = null;
+let onAlbum = null;        // callback(albumId|null) when the playing album changes
+let lastAlbumId;
 
 const IDLE_MS = 60000;     // 60s of no interaction → ambient mode
 
-export function initPlayer() {
+export function initPlayer(onAlbumChange) {
+  onAlbum = onAlbumChange;
   el("npPlay").onclick = togglePlay;
   el("npPrev").onclick = () => run(prevTrack);
   el("npNext").onclick = () => run(nextTrack);
@@ -57,6 +60,8 @@ function applyState(s) {
   localProgress = (s && s.progress_ms) || 0;
   renderBar();
   if (ambientOn) renderAmbient();
+  const aid = (s && s.item && s.item.album && s.item.album.id) || null;
+  if (aid !== lastAlbumId) { lastAlbumId = aid; if (onAlbum) onAlbum(aid); }
 }
 
 function renderBar() {

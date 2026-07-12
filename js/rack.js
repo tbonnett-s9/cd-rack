@@ -29,6 +29,7 @@ export function renderRack(rackEl, albums, onOpen) {
   albums.forEach(album => {
     const spine = document.createElement("button");
     spine.className = "spine";
+    spine.dataset.albumId = album.id || "";
     spine.title = `${album.name} — ${album.artist}`;
 
     if (album.image) {
