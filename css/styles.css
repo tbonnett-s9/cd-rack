@@ -152,12 +152,12 @@ html, body {
   padding-top: 14px;
   scroll-snap-type: x proximity;
 }
-/* the wooden shelf floor under each row */
+/* subtle shelf lip under each row (kept faint so empty space isn't a hard line) */
 .shelf::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 16px;
-  background: linear-gradient(var(--shelf), #17120f);
-  border-radius: 4px;
-  box-shadow: 0 8px 20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px;
+  background: -webkit-linear-gradient(top, rgba(255,255,255,.05), rgba(0,0,0,.16));
+  background: linear-gradient(rgba(255,255,255,.05), rgba(0,0,0,.16));
+  border-radius: 3px;
 }
 
 .spine {
@@ -201,12 +201,17 @@ html, body {
   display: flex; flex-direction: row; align-items: center; justify-content: flex-start;
   gap: 30px;
   writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl; text-orientation: mixed;
+  /* Long titles fade out at the bottom instead of hard-clipping mid-word. */
+  -webkit-mask-image: -webkit-linear-gradient(top, #000 84%, transparent 97%);
+  mask-image: linear-gradient(to bottom, #000 84%, transparent 97%);
 }
 .spine-title { font-weight: 700; font-size: 1.15rem; letter-spacing: .3px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 100%;
+  white-space: nowrap; overflow: hidden; max-height: 100%; min-height: 0;
+  -webkit-flex: 0 1 auto; flex: 0 1 auto;   /* title may shrink (and fade) */
   text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.8); }
 .spine-artist { font-weight: 600; font-size: 1rem; color: rgba(255,255,255,.9); white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; max-height: 100%;
+  overflow: hidden; text-overflow: ellipsis;
+  -webkit-flex: 0 0 auto; flex: 0 0 auto;   /* artist never shrinks */
   text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.8); }
 
 /* ── Loading / empty states ─────────────────────────── */
