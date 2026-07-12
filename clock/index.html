@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Clock</title>
+<style>
+/* iOS 9 / Safari 9 safe: flexbox with -webkit- prefixes, no grid, no gap,
+   no CSS variables, no aspect-ratio. */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%; width: 100%;
+  background: #0a0a0d;
+  background: -webkit-radial-gradient(50% -10%, 130% 90%, #26242c, #0b0a0e 70%);
+  color: #f3efe9;
+  font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-user-select: none; user-select: none;
+  overflow: hidden;
+}
+.wrap {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: -webkit-flex; display: flex;
+  -webkit-flex-direction: column; flex-direction: column;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  text-align: center;
+}
+
+/* ── Clock ── */
+.clock {
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: flex-end; align-items: flex-end;
+  -webkit-perspective: 500px; perspective: 500px;
+}
+.group { display: -webkit-flex; display: flex; }
+.digit {
+  position: relative;
+  width: 15vw; height: 22vw; max-width: 150px; max-height: 220px;
+  margin: 0 4px;
+  background: -webkit-linear-gradient(top, #2a2730, #17151b);
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
+  -webkit-transform-origin: center center; transform-origin: center center;
+  -webkit-transform: rotateX(0deg); transform: rotateX(0deg);
+  -webkit-transition: -webkit-transform .19s ease-in; transition: -webkit-transform .19s ease-in;
+}
+.digit span {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  font-size: 15vw; line-height: 1; font-weight: 700;
+  color: #f6f2ec;
+  text-shadow: 0 2px 6px rgba(0,0,0,.5);
+}
+/* centre hinge line, like a split-flap card */
+.digit:after {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px;
+  margin-top: -1px; background: rgba(0,0,0,.45);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05);
+}
+.digit.flipping { -webkit-transform: rotateX(-90deg); transform: rotateX(-90deg); }
+.digit.flipin { -webkit-transition: none; transition: none;
+  -webkit-transform: rotateX(90deg); transform: rotateX(90deg); }
+
+.colon {
+  font-size: 12vw; font-weight: 700; color: #6f6a63;
+  padding: 0 1.2vw; -webkit-align-self: center; align-self: center;
+}
+.seconds .digit {
+  width: 7vw; height: 10vw; max-width: 70px; max-height: 100px;
+  margin: 0 3px;
+}
+.seconds .digit span { font-size: 7vw; }
+.seconds { margin-left: 2.4vw; }
+
+/* ── Date + weather ── */
+.date {
+  margin-top: 5vh; font-size: 3.4vw; font-weight: 400;
+  letter-spacing: .5px; color: #d7d0c6;
+}
+.weather {
+  margin-top: 1.6vh; font-size: 3vw; color: #a79f94;
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+}
+.weather .ic { font-size: 4vw; margin-right: 1.2vw; }
+.weather .dot { margin: 0 1.4vw; opacity: .5; }
+@media (min-width: 700px) {
+  .date { font-size: 26px; } .weather { font-size: 22px; } .weather .ic { font-size: 30px; }
+  .colon { font-size: 90px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="clock">
+    <div class="group" id="hours">
+      <div class="digit"><span>0</span></div><div class="digit"><span>0</span></div>
+    </div>
+    <div class="colon">:</div>
+    <div class="group" id="mins">
+      <div class="digit"><span>0</span></div><div class="digit"><span>0</span></div>
+    </div>
+    <div class="group seconds" id="secs">
+      <div class="digit"><span>0</span></div><div class="digit"><span>0</span></div>
+    </div>
+  </div>
+  <div class="date" id="date">&nbsp;</div>
+  <div class="weather" id="weather">&nbsp;</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ── CONFIG — edit these, or pass in the URL:
+       ?lat=51.5&lon=-0.12&place=London&units=fahrenheit&geo=1&hour12=1  ── */
+  var CONFIG = {
+    lat: 51.5072,          // default: London
+    lon: -0.1276,
+    place: "London",
+    units: "celsius",      // or "fahrenheit"
+    hour24: true,          // 24-hour clock
+    useGeo: false,         // ask the device for its location
+    weatherRefreshMin: 15
+  };
+
+  /* Apply URL overrides */
+  var q = {};
+  var qs = window.location.search.replace(/^\?/, "").split("&");
+  for (var i = 0; i < qs.length; i++) {
+    var kv = qs[i].split("=");
+    if (kv[0]) q[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || "");
+  }
+  if (q.lat) CONFIG.lat = parseFloat(q.lat);
+  if (q.lon) CONFIG.lon = parseFloat(q.lon);
+  if (q.place) CONFIG.place = q.place;
+  if (q.units) CONFIG.units = q.units;
+  if (q.hour12) CONFIG.hour24 = false;
+  if (q.geo) CONFIG.useGeo = true;
+
+  var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var MONTHS = ["January","February","March","April","May","June","July",
+                "August","September","October","November","December"];
+
+  function digitsOf(id) { return document.getElementById(id).getElementsByClassName("digit"); }
+  var H = digitsOf("hours"), M = digitsOf("mins"), S = digitsOf("secs");
+  var dateEl = document.getElementById("date");
+  var weatherEl = document.getElementById("weather");
+
+  function two(n) { n = "" + n; return n.length < 2 ? "0" + n : n; }
+
+  /* Flip one digit card to a new character (two-phase rotateX). */
+  function setDigit(card, ch) {
+    var span = card.getElementsByTagName("span")[0];
+    if (span.textContent === ch) return;
+    card.className = "digit flipping";           // fold away (0 -> -90)
+    window.setTimeout(function () {
+      span.textContent = ch;
+      card.className = "digit flipin";           // jump to +90 (no transition)
+      void card.offsetWidth;                     // force reflow
+      card.className = "digit";                   // fold back (+90 -> 0)
+    }, 190);
+  }
+
+  function tick() {
+    var now = new Date();
+    var h = now.getHours();
+    if (!CONFIG.hour24) { h = h % 12; if (h === 0) h = 12; }
+    var hh = two(h), mm = two(now.getMinutes()), ss = two(now.getSeconds());
+    setDigit(H[0], hh.charAt(0)); setDigit(H[1], hh.charAt(1));
+    setDigit(M[0], mm.charAt(0)); setDigit(M[1], mm.charAt(1));
+    setDigit(S[0], ss.charAt(0)); setDigit(S[1], ss.charAt(1));
+    dateEl.textContent = DAYS[now.getDay()] + ", " + now.getDate() + " " +
+                         MONTHS[now.getMonth()] + " " + now.getFullYear();
+  }
+
+  /* WMO weather code -> emoji + label */
+  function weatherInfo(code) {
+    var c = code;
+    if (c === 0) return ["☀️", "Clear"];
+    if (c === 1) return ["☀️", "Mostly clear"];
+    if (c === 2) return ["⛅", "Partly cloudy"];
+    if (c === 3) return ["☁️", "Overcast"];
+    if (c === 45 || c === 48) return ["🌫️", "Fog"];
+    if (c >= 51 && c <= 57) return ["🌧️", "Drizzle"];
+    if (c >= 61 && c <= 67) return ["🌧️", "Rain"];
+    if (c >= 71 && c <= 77) return ["❄️", "Snow"];
+    if (c >= 80 && c <= 82) return ["🌧️", "Showers"];
+    if (c === 85 || c === 86) return ["❄️", "Snow showers"];
+    if (c >= 95) return ["⛈️", "Thunderstorm"];
+    return ["🌡️", ""];
+  }
+
+  function showWeather(d) {
+    if (!d || !d.current || !d.daily) return;
+    var deg = "°";
+    var t = Math.round(d.current.temperature_2m);
+    var info = weatherInfo(d.current.weather_code);
+    var hi = Math.round(d.daily.temperature_2m_max[0]);
+    var lo = Math.round(d.daily.temperature_2m_min[0]);
+    var html = '<span class="ic">' + info[0] + '</span>' +
+               '<span>' + t + deg + '</span>' +
+               '<span class="dot">&middot;</span><span>' + info[1] + '</span>' +
+               '<span class="dot">&middot;</span><span>H ' + hi + deg + '&nbsp; L ' + lo + deg + '</span>';
+    if (CONFIG.place) html += '<span class="dot">&middot;</span><span>' + CONFIG.place + '</span>';
+    weatherEl.innerHTML = html;
+  }
+
+  function loadWeather() {
+    var unit = CONFIG.units === "fahrenheit" ? "fahrenheit" : "celsius";
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.lat +
+              "&longitude=" + CONFIG.lon +
+              "&current=temperature_2m,weather_code" +
+              "&daily=temperature_2m_max,temperature_2m_min,weather_code" +
+              "&timezone=auto&forecast_days=1&temperature_unit=" + unit;
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { showWeather(JSON.parse(xhr.responseText)); } catch (e) {}
+      }
+    };
+    xhr.send();
+  }
+
+  /* Optional: use the device's own location */
+  function startWeather() {
+    if (CONFIG.useGeo && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        CONFIG.lat = pos.coords.latitude;
+        CONFIG.lon = pos.coords.longitude;
+        loadWeather();
+      }, function () { loadWeather(); }, { timeout: 8000 });
+    } else {
+      loadWeather();
+    }
+  }
+
+  tick();
+  window.setInterval(tick, 1000);
+  startWeather();
+  window.setInterval(loadWeather, CONFIG.weatherRefreshMin * 60 * 1000);
+})();
+</script>
+</body>
+</html>
