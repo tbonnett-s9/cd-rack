@@ -213,47 +213,52 @@ html, body {
   var hasWeather = false;
   function weatherMsg(m) { if (!hasWeather) weatherEl.textContent = m; }
 
-  function loadWeather() {
-    weatherMsg("Loading weather…");
-    var unit = CONFIG.units === "fahrenheit" ? "fahrenheit" : "celsius";
-    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.lat +
-              "&longitude=" + CONFIG.lon +
-              "&current=temperature_2m,weather_code" +
-              "&daily=temperature_2m_max,temperature_2m_min,weather_code" +
-              "&timezone=auto&forecast_days=1&temperature_unit=" + unit;
+  function getJSON(url, cb) {
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url, true);
     try { xhr.timeout = 12000; } catch (e) {}
     xhr.onreadystatechange = function () {
       if (xhr.readyState !== 4) return;
       if (xhr.status >= 200 && xhr.status < 300) {
-        try { showWeather(JSON.parse(xhr.responseText)); hasWeather = true; }
-        catch (e) { weatherMsg("Weather data error"); }
-      } else {
-        weatherMsg("Weather unavailable (status " + xhr.status + ")");
-      }
+        try { cb(JSON.parse(xhr.responseText)); } catch (e) { cb(null); }
+      } else { cb(null); }
     };
-    xhr.onerror = function () { weatherMsg("Weather unreachable (network/TLS)"); };
-    xhr.ontimeout = function () { weatherMsg("Weather timed out"); };
+    xhr.onerror = function () { cb(null); };
+    xhr.ontimeout = function () { cb(null); };
     xhr.send();
   }
 
-  /* Optional: use the device's own location */
-  function startWeather() {
-    if (CONFIG.useGeo && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function (pos) {
-        CONFIG.lat = pos.coords.latitude;
-        CONFIG.lon = pos.coords.longitude;
-        loadWeather();
-      }, function () { loadWeather(); }, { timeout: 8000 });
-    } else {
-      loadWeather();
-    }
+  function loadWeather() {
+    weatherMsg("Loading weather…");
+    // Same-origin file, refreshed by a scheduled job. Old Safari can always
+    // reach this (same host/TLS as the page, no cross-origin call).
+    getJSON("weather.json?ts=" + (new Date()).getTime(), function (data) {
+      if (data && data.current) {
+        if (data.place) CONFIG.place = data.place;
+        showWeather(data);
+        hasWeather = true;
+      } else {
+        loadWeatherDirect(); // modern browsers / before the file exists
+      }
+    });
+  }
+
+  function loadWeatherDirect() {
+    var unit = CONFIG.units === "fahrenheit" ? "fahrenheit" : "celsius";
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + CONFIG.lat +
+              "&longitude=" + CONFIG.lon +
+              "&current=temperature_2m,weather_code" +
+              "&daily=temperature_2m_max,temperature_2m_min,weather_code" +
+              "&timezone=auto&forecast_days=1&temperature_unit=" + unit;
+    getJSON(url, function (data) {
+      if (data && data.current) { showWeather(data); hasWeather = true; }
+      else weatherMsg("Weather unavailable");
+    });
   }
 
   tick();
   window.setInterval(tick, 1000);
-  startWeather();
+  loadWeather();
   window.setInterval(loadWeather, CONFIG.weatherRefreshMin * 60 * 1000);
 })();
 </script>
