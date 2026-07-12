@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tbonnett.huepanel</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/timbonnett/Projects/CD selection/hue-panel/server.py</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/timbonnett/Projects/CD selection/hue-panel</string>
+
+  <!-- Start at login and relaunch automatically if it ever stops -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/timbonnett/Projects/CD selection/hue-panel/huepanel.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/timbonnett/Projects/CD selection/hue-panel/huepanel.log</string>
+</dict>
+</plist>
