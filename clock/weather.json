@@ -1,7 +1,7 @@
 {
   "latitude": 52.5,
   "longitude": 1.5,
-  "generationtime_ms": 1.3321638107299805,
+  "generationtime_ms": 2.8362274169921875,
   "utc_offset_seconds": 3600,
   "timezone": "Europe/London",
   "timezone_abbreviation": "GMT+1",
@@ -15,11 +15,11 @@
     "wind_speed_10m": "mp/h"
   },
   "current": {
-    "time": "2026-07-14T23:30",
+    "time": "2026-07-15T00:30",
     "interval": 900,
-    "temperature_2m": 18.0,
-    "apparent_temperature": 18.2,
-    "weather_code": 2,
+    "temperature_2m": 17.5,
+    "apparent_temperature": 17.8,
+    "weather_code": 1,
     "wind_speed_10m": 8.5
   },
   "daily_units": {
@@ -32,25 +32,25 @@
   },
   "daily": {
     "time": [
-      "2026-07-14",
       "2026-07-15",
       "2026-07-16",
       "2026-07-17",
-      "2026-07-18"
+      "2026-07-18",
+      "2026-07-19"
     ],
     "temperature_2m_max": [
-      24.3,
       23.6,
       23.6,
       22.3,
-      19.5
+      19.5,
+      18.9
     ],
     "temperature_2m_min": [
-      17.0,
-      16.6,
+      16.7,
       15.8,
       14.2,
-      14.2
+      14.2,
+      10.6
     ],
     "weather_code": [
       3,
@@ -60,18 +60,18 @@
       3
     ],
     "sunrise": [
-      "2026-07-14T04:48",
       "2026-07-15T04:49",
       "2026-07-16T04:51",
       "2026-07-17T04:52",
-      "2026-07-18T04:53"
+      "2026-07-18T04:53",
+      "2026-07-19T04:54"
     ],
     "sunset": [
-      "2026-07-14T21:11",
       "2026-07-15T21:10",
       "2026-07-16T21:09",
       "2026-07-17T21:08",
-      "2026-07-18T21:06"
+      "2026-07-18T21:06",
+      "2026-07-19T21:05"
     ]
   },
   "place": "Beccles"
