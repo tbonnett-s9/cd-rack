@@ -1,7 +1,7 @@
 {
   "latitude": 52.453995,
   "longitude": 1.5745392,
-  "generationtime_ms": 1.3227462768554688,
+  "generationtime_ms": 3.9783716201782227,
   "utc_offset_seconds": 3600,
   "timezone": "Europe/London",
   "timezone_abbreviation": "GMT+1",
@@ -15,12 +15,12 @@
     "wind_speed_10m": "mp/h"
   },
   "current": {
-    "time": "2026-10-14T01:15",
+    "time": "2026-10-14T06:00",
     "interval": 900,
-    "temperature_2m": 11.0,
-    "apparent_temperature": 9.1,
-    "weather_code": 1,
-    "wind_speed_10m": 5.1
+    "temperature_2m": 7.6,
+    "apparent_temperature": 5.5,
+    "weather_code": 0,
+    "wind_speed_10m": 4.7
   },
   "daily_units": {
     "time": "iso8601",
@@ -39,23 +39,23 @@
       "2026-10-18"
     ],
     "temperature_2m_max": [
-      18.1,
-      20.5,
-      15.1,
+      17.7,
+      19.9,
+      15.0,
       12.7,
       13.0
     ],
     "temperature_2m_min": [
-      7.7,
-      12.8,
-      8.9,
+      7.5,
+      12.4,
+      9.0,
       8.3,
-      9.8
+      10.3
     ],
     "weather_code": [
       3,
       3,
-      61,
+      63,
       51,
       53
     ],
